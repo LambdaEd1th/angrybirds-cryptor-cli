@@ -11,7 +11,7 @@ Encrypt or decrypt **Angry Birds Classic | Rio | Seasons | Space | Friends | Sta
 `angrybirds-cryptor-cli <COMMAND>`
 
 ### Example
-#### Decrypt Progress.dat file
+#### Decrypt native file
 `angrybirds-cryptor-cli decrypt -f native -g classic -i example.lua -o example.dec.lua`
-#### Encrypt .contraption file
+#### Encrypt save file
 `angrybirds-cryptor-cli encrypt -f save -g seasons -i example.dec.lua -o example.lua`
