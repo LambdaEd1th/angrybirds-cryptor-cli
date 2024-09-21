@@ -26,10 +26,12 @@ pub enum Commands {
 #[derive(Args, Clone, Debug, PartialEq, Eq)]
 pub struct CryptoArgs {
     /// What file type to run the program in
+    /// Options: native | save | downloaded
     #[arg(short, long, value_name = "FILE_TYPE")]
     pub file_type: String,
 
     /// What game file to run the program in
+    /// Options: classic | rio | seasons | space | friends | starwars | starwarsii | stella
     #[arg(short, long, value_name = "GAME_NAME")]
     pub game_name: String,
 

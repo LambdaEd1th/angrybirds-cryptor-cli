@@ -1,9 +1,9 @@
 [package]
-name = "angrybirds-cryptor"
+name = "angrybirds-cryptor-cli"
 version = "0.1.0"
 edition = "2021"
 authors = ["ed1th"]
-description = "Angry Birds user data cryptor"
+description = "Angry Birds file cryptor"
 categories = ["command-line-utilities"]
 readme = "README.md"
 license = "GPL-3.0-or-later"
@@ -13,6 +13,4 @@ license = "GPL-3.0-or-later"
 [dependencies]
 aes = { version = "0.8.4" }
 cbc = { version = "0.1.2", features = ["std"] }
-clap = { version = "4.5.16", features = ["derive", "help"] }
-rust-embed = { version = "8.5.0", features = ["compression"] }
-toml = { version = "0.8.19" }
+clap = { version = "4.5.18", features = ["derive", "help"] }

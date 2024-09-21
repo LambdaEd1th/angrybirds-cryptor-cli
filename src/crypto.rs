@@ -9,7 +9,7 @@ type Aes256CbcDec = cbc::Decryptor<aes::Aes256Dec>;
 static KEYS: LazyLock<HashMap<&str, HashMap<&str, &[u8; 32]>>> = LazyLock::new(|| {
     HashMap::from([
         (
-            "native-resource",
+            "native",
             HashMap::from([
                 ("classic", b"USCaPQpA4TSNVxMI1v9SK9UC0yZuAnb2"),
                 ("rio", b"USCaPQpA4TSNVxMI1v9SK9UC0yZuAnb2"),
@@ -22,7 +22,7 @@ static KEYS: LazyLock<HashMap<&str, HashMap<&str, &[u8; 32]>>> = LazyLock::new(|
             ]),
         ),
         (
-            "save-file",
+            "save",
             HashMap::from([
                 ("classic", b"44iUY5aTrlaYoet9lapRlaK1Ehlec5i0"),
                 ("rio", b"44iUY5aTrlaYoet9lapRlaK1Ehlec5i0"),
@@ -35,7 +35,7 @@ static KEYS: LazyLock<HashMap<&str, HashMap<&str, &[u8; 32]>>> = LazyLock::new(|
             ]),
         ),
         (
-            "downloaded-resource",
+            "downloaded",
             HashMap::from([("friends", b"rF1pFq2wDzgR7PQ94dTFuXww0YvY7nfK")]),
         ),
     ])
@@ -68,7 +68,7 @@ impl<'cryptor> Cryptor<'cryptor> {
 
     pub fn encrypt(&self, file_type: String, game_name: String, buffer: &[u8]) -> Vec<u8> {
         self.aes_encrypt(
-            (&(*KEYS)[file_type.as_str()])[game_name.as_str()],
+            &*KEYS[&file_type as &str][&game_name as &str],
             &[0u8; 16],
             buffer,
         )
@@ -81,7 +81,7 @@ impl<'cryptor> Cryptor<'cryptor> {
         buffer: &[u8],
     ) -> Result<Vec<u8>, CryptorError> {
         self.aes_decrypt(
-            (&(*KEYS)[file_type.as_str()])[game_name.as_str()],
+            &*KEYS[&file_type as &str][&game_name as &str],
             &[0u8; 16],
             buffer,
         )
