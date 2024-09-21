@@ -1,4 +1,4 @@
-# Bad Piggies Cryptor
+# Angry Birds Cryptor
 
 * Author: ed1th
 * Version: 0.1.0
