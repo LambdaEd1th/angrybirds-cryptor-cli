@@ -1,0 +1,18 @@
+[package]
+name = "angrybirds-cryptor"
+version = "0.1.0"
+edition = "2021"
+authors = ["ed1th"]
+description = "Angry Birds user data cryptor"
+categories = ["command-line-utilities"]
+readme = "README.md"
+license = "GPL-3.0-or-later"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+aes = { version = "0.8.4" }
+cbc = { version = "0.1.2", features = ["std"] }
+clap = { version = "4.5.16", features = ["derive", "help"] }
+rust-embed = { version = "8.5.0", features = ["compression"] }
+toml = { version = "0.8.19" }
