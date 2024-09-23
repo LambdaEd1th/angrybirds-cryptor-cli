@@ -77,7 +77,7 @@ impl<'cryptor> Cryptor<'cryptor> {
 
 #[derive(Debug)]
 pub enum CryptorError {
-    // Failed hash error
+    // Failed crypto error
     AesCryptoError(String),
 }
 
