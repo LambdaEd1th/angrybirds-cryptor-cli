@@ -70,11 +70,7 @@ impl<'cryptor> Cryptor<'cryptor> {
         self.aes_encrypt(&*KEYS[file_type][game_name], &[0u8; 16])
     }
 
-    pub fn decrypt(
-        &self,
-        file_type: &str,
-        game_name: &str
-    ) -> Result<Vec<u8>, CryptorError> {
+    pub fn decrypt(&self, file_type: &str, game_name: &str) -> Result<Vec<u8>, CryptorError> {
         self.aes_decrypt(&*KEYS[file_type][game_name], &[0u8; 16])
     }
 }
