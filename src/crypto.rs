@@ -66,25 +66,17 @@ impl<'cryptor> Cryptor<'cryptor> {
         Ok(plain)
     }
 
-    pub fn encrypt(&self, file_type: String, game_name: String, buffer: &[u8]) -> Vec<u8> {
-        self.aes_encrypt(
-            &*KEYS[&file_type as &str][&game_name as &str],
-            &[0u8; 16],
-            buffer,
-        )
+    pub fn encrypt(&self, file_type: &str, game_name: &str, buffer: &[u8]) -> Vec<u8> {
+        self.aes_encrypt(&*KEYS[file_type][game_name], &[0u8; 16], buffer)
     }
 
     pub fn decrypt(
         &self,
-        file_type: String,
-        game_name: String,
+        file_type: &str,
+        game_name: &str,
         buffer: &[u8],
     ) -> Result<Vec<u8>, CryptorError> {
-        self.aes_decrypt(
-            &*KEYS[&file_type as &str][&game_name as &str],
-            &[0u8; 16],
-            buffer,
-        )
+        self.aes_decrypt(&*KEYS[file_type][game_name], &[0u8; 16], buffer)
     }
 }
 
