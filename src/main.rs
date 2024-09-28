@@ -29,8 +29,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             let mut input_file_buffer: Vec<u8> = Vec::new();
             input_file.read_to_end(&mut input_file_buffer)?;
             let cryptor = Cryptor::new(&input_file_buffer);
-            let output_buffer =
-                cryptor.decrypt(&args.file_type, &args.game_name)?;
+            let output_buffer = cryptor.decrypt(&args.file_type, &args.game_name)?;
             let mut output_file = File::create(args.output_file)?;
             output_file.write_all(&output_buffer)?;
         }
