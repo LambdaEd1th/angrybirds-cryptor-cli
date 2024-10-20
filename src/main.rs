@@ -1,5 +1,4 @@
 use std::{
-    error::Error,
     fs::File,
     io::{Read, Write},
 };
@@ -12,7 +11,7 @@ use cli::{Cli, Commands};
 
 use clap::Parser;
 
-fn main() -> Result<(), Box<dyn Error>> {
+fn main() -> Result<(), Error> {
     let cli = Cli::parse();
     match cli.command {
         Commands::Encrypt(args) => {
@@ -35,4 +34,41 @@ fn main() -> Result<(), Box<dyn Error>> {
         }
     }
     Ok(())
+}
+
+#[derive(Debug)]
+pub enum Error {
+    // Failed hash error
+    CryptorError(crypto::Error),
+    IOError(std::io::Error),
+}
+
+impl std::fmt::Display for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match &self {
+            Self::CryptorError(err) => write!(f, "CryptorError: {err}"),
+            Self::IOError(err) => write!(f, "IOError: {err}"),
+        }
+    }
+}
+
+impl std::error::Error for Error {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match &self {
+            Self::CryptorError(err) => Some(err),
+            Self::IOError(err) => Some(err),
+        }
+    }
+}
+
+impl From<crypto::Error> for Error {
+    fn from(err: crypto::Error) -> Self {
+        Self::CryptorError(err)
+    }
+}
+
+impl From<std::io::Error> for Error {
+    fn from(err: std::io::Error) -> Self {
+        Self::IOError(err)
+    }
 }

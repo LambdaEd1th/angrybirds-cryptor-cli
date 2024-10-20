@@ -1,10 +1,15 @@
 use std::collections::HashMap;
 use std::sync::LazyLock;
 
-use aes::cipher::{block_padding::Pkcs7, BlockDecryptMut, BlockEncryptMut, KeyIvInit};
+use aes::cipher::{
+    block_padding::{Pkcs7, UnpadError},
+    BlockDecryptMut, BlockEncryptMut, KeyIvInit,
+};
 
 type Aes256CbcEnc = cbc::Encryptor<aes::Aes256Enc>;
 type Aes256CbcDec = cbc::Decryptor<aes::Aes256Dec>;
+
+pub type Result<T> = core::result::Result<T, Error>;
 
 static KEYS: LazyLock<HashMap<&str, HashMap<&str, &[u8; 32]>>> = LazyLock::new(|| {
     HashMap::from([
@@ -58,11 +63,9 @@ impl<'cryptor> Cryptor<'cryptor> {
         cipher
     }
 
-    fn aes_decrypt(&self, key: &[u8], iv: &[u8]) -> Result<Vec<u8>, CryptorError> {
+    fn aes_decrypt(&self, key: &[u8], iv: &[u8]) -> Result<Vec<u8>> {
         let decryptor = Aes256CbcDec::new(key.into(), iv.into());
-        let plain = decryptor
-            .decrypt_padded_vec_mut::<Pkcs7>(&self.input_file)
-            .map_err(|e| CryptorError::AesCryptoError(e.to_string()))?;
+        let plain = decryptor.decrypt_padded_vec_mut::<Pkcs7>(&self.input_file)?;
         Ok(plain)
     }
 
@@ -70,23 +73,35 @@ impl<'cryptor> Cryptor<'cryptor> {
         self.aes_encrypt(&*KEYS[file_type][game_name], &[0u8; 16])
     }
 
-    pub fn decrypt(&self, file_type: &str, game_name: &str) -> Result<Vec<u8>, CryptorError> {
+    pub fn decrypt(&self, file_type: &str, game_name: &str) -> Result<Vec<u8>> {
         self.aes_decrypt(&*KEYS[file_type][game_name], &[0u8; 16])
     }
 }
 
 #[derive(Debug)]
-pub enum CryptorError {
+pub enum Error {
     // Failed crypto error
-    AesCryptoError(String),
+    AesCryptoError(UnpadError),
 }
 
-impl std::fmt::Display for CryptorError {
+impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::AesCryptoError(s) => write!(f, "AesCryptoError: {}", s),
+        match &self {
+            Self::AesCryptoError(e) => write!(f, "AesCryptoError: {}", e),
         }
     }
 }
 
-impl std::error::Error for CryptorError {}
+impl std::error::Error for Error {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match &self {
+            Error::AesCryptoError(e) => Some(e),
+        }
+    }
+}
+
+impl From<UnpadError> for Error {
+    fn from(err: UnpadError) -> Self {
+        Self::AesCryptoError(err)
+    }
+}
