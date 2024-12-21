@@ -16,7 +16,7 @@ fn main() -> Result<(), Error> {
     match cli.command {
         Commands::Encrypt(args) => {
             let mut input_file = File::open(args.input_file)?;
-            let mut input_file_buffer: Vec<u8> = Vec::new();
+            let mut input_file_buffer = Vec::<u8>::new();
             input_file.read_to_end(&mut input_file_buffer)?;
             let cryptor = Cryptor::new(&input_file_buffer);
             let output_buffer = cryptor.encrypt(&args.file_type, &args.game_name);
@@ -25,7 +25,7 @@ fn main() -> Result<(), Error> {
         }
         Commands::Decrypt(args) => {
             let mut input_file = File::open(args.input_file)?;
-            let mut input_file_buffer: Vec<u8> = Vec::new();
+            let mut input_file_buffer = Vec::<u8>::new();
             input_file.read_to_end(&mut input_file_buffer)?;
             let cryptor = Cryptor::new(&input_file_buffer);
             let output_buffer = cryptor.decrypt(&args.file_type, &args.game_name)?;
