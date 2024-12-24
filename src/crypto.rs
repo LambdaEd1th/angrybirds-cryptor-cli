@@ -11,11 +11,11 @@ type Aes256CbcDec = cbc::Decryptor<aes::Aes256Dec>;
 
 pub type Result<T> = core::result::Result<T, Error>;
 
-static KEYS: LazyLock<HashMap<&str, HashMap<&str, &[u8; 32]>>> = LazyLock::new(|| {
-    HashMap::from([
+const KEYS: LazyLock<HashMap<&str, HashMap<&str, &[u8; 32]>>> = LazyLock::new(|| {
+    [
         (
             "native",
-            HashMap::from([
+            [
                 ("classic", b"USCaPQpA4TSNVxMI1v9SK9UC0yZuAnb2"),
                 ("rio", b"USCaPQpA4TSNVxMI1v9SK9UC0yZuAnb2"),
                 ("seasons", b"zePhest5faQuX2S2Apre@4reChAtEvUt"),
@@ -24,11 +24,12 @@ static KEYS: LazyLock<HashMap<&str, HashMap<&str, &[u8; 32]>>> = LazyLock::new(|
                 ("starwars", b"An8t3mn8U6spiQ0zHHr3a1loDrRa3mtE"),
                 ("starwarsii", b"B0pm3TAlzkN9ghzoe2NizEllPdN0hQni"),
                 ("stella", b"4FzZOae60yAmxTClzdgfcr4BAbPIgj7X"),
-            ]),
+            ]
+            .into(),
         ),
         (
             "save",
-            HashMap::from([
+            [
                 ("classic", b"44iUY5aTrlaYoet9lapRlaK1Ehlec5i0"),
                 ("rio", b"44iUY5aTrlaYoet9lapRlaK1Ehlec5i0"),
                 ("seasons", b"brU4u=EbR4s_A3APu6U#7B!axAm*We#5"),
@@ -37,13 +38,15 @@ static KEYS: LazyLock<HashMap<&str, HashMap<&str, &[u8; 32]>>> = LazyLock::new(|
                 ("starwars", b"e83Tph0R3aZ2jGK6eS91uLvQpL33vzNi"),
                 ("starwarsii", b"taT3vigDoNlqd44yiPbt21biCpVma6nb"),
                 ("stella", b"Bll3qkcy5fKrNVxZqtkFH19Ojn2sdJFu"),
-            ]),
+            ]
+            .into(),
         ),
         (
             "downloaded",
-            HashMap::from([("friends", b"rF1pFq2wDzgR7PQ94dTFuXww0YvY7nfK")]),
+            [("friends", b"rF1pFq2wDzgR7PQ94dTFuXww0YvY7nfK")].into(),
         ),
-    ])
+    ]
+    .into()
 });
 
 #[derive(Clone, Debug, PartialEq, Eq)]
