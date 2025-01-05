@@ -51,33 +51,37 @@ const KEYS: LazyLock<HashMap<&str, HashMap<&str, &[u8; 32]>>> = LazyLock::new(||
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Cryptor<'cryptor> {
-    input_file: &'cryptor [u8],
+    file_type: &'cryptor str,
+    game_name: &'cryptor str,
 }
 
 impl<'cryptor> Cryptor<'cryptor> {
     /// Creates a new [`Cryptor`].
-    pub fn new(input_file: &'cryptor [u8]) -> Self {
-        Self { input_file }
+    pub fn new(file_type: &'cryptor str, game_name: &'cryptor str) -> Self {
+        Self {
+            file_type,
+            game_name,
+        }
     }
 
-    fn aes_encrypt(&self, key: &[u8], iv: &[u8]) -> Vec<u8> {
+    fn aes_encrypt(&self, key: &[u8], iv: &[u8], buffer: &[u8]) -> Vec<u8> {
         let encryptor = Aes256CbcEnc::new(key.into(), iv.into());
-        let cipher = encryptor.encrypt_padded_vec_mut::<Pkcs7>(&self.input_file);
+        let cipher = encryptor.encrypt_padded_vec_mut::<Pkcs7>(buffer);
         cipher
     }
 
-    fn aes_decrypt(&self, key: &[u8], iv: &[u8]) -> Result<Vec<u8>> {
+    fn aes_decrypt(&self, key: &[u8], iv: &[u8], buffer: &[u8]) -> Result<Vec<u8>> {
         let decryptor = Aes256CbcDec::new(key.into(), iv.into());
-        let plain = decryptor.decrypt_padded_vec_mut::<Pkcs7>(&self.input_file)?;
+        let plain = decryptor.decrypt_padded_vec_mut::<Pkcs7>(buffer)?;
         Ok(plain)
     }
 
-    pub fn encrypt(&self, file_type: &str, game_name: &str) -> Vec<u8> {
-        self.aes_encrypt(&*KEYS[file_type][game_name], &[0u8; 16])
+    pub fn encrypt(&self, buffer: &[u8]) -> Vec<u8> {
+        self.aes_encrypt(&*KEYS[&self.file_type][&self.game_name], &[0u8; 16], buffer)
     }
 
-    pub fn decrypt(&self, file_type: &str, game_name: &str) -> Result<Vec<u8>> {
-        self.aes_decrypt(&*KEYS[file_type][game_name], &[0u8; 16])
+    pub fn decrypt(&self, buffer: &[u8]) -> Result<Vec<u8>> {
+        self.aes_decrypt(&*KEYS[&self.file_type][&self.game_name], &[0u8; 16], buffer)
     }
 }
 
