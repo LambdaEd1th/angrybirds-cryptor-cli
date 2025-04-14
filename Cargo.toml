@@ -12,6 +12,7 @@ repository = "https://github.com/LambdaEd1th/angrybirds-cryptor-cli"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-aes = { version = "0" }
-cbc = { version = "0", features = ["std"] }
-clap = { version = "4", features = ["derive", "help"] }
+aes = { version = "0.8.4" }
+cbc = { version = "0.1.2", features = ["std"] }
+clap = { version = "4.5.36", features = ["derive", "help"] }
+thiserror = { version = "2.0.12" }
