@@ -1,12 +1,9 @@
 // --- src/crypto.rs ---
-use std::{
-    collections::HashMap,
-    sync::LazyLock,
-};
 use aes::cipher::{
     block_padding::{Pkcs7, UnpadError},
     BlockDecryptMut, BlockEncryptMut, KeyIvInit,
 };
+use std::{collections::HashMap, sync::LazyLock};
 
 type Aes256CbcEnc = cbc::Encryptor<aes::Aes256>;
 type Aes256CbcDec = cbc::Decryptor<aes::Aes256>;
@@ -53,8 +50,8 @@ const KEYS: LazyLock<HashMap<&str, HashMap<&str, &[u8; 32]>>> = LazyLock::new(||
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
-    #[error("Decryption failed: {0}")]
-    Cryption(#[from] UnpadError),
+    #[error("AES cryption error: {0}")]
+    CryptoError(#[from] UnpadError),
 }
 
 #[derive(Clone, Debug)]
@@ -73,13 +70,11 @@ impl Cryptor {
 
     pub fn encrypt(&self, data: &[u8]) -> Vec<u8> {
         let key = KEYS[&self.file_type as &str][&self.game_name as &str];
-        Aes256CbcEnc::new(key.into(), &[0; 16].into())
-            .encrypt_padded_vec_mut::<Pkcs7>(data)
+        Aes256CbcEnc::new(key.into(), &[0; 16].into()).encrypt_padded_vec_mut::<Pkcs7>(data)
     }
 
     pub fn decrypt(&self, data: &[u8]) -> Result<Vec<u8>> {
         let key = KEYS[&self.file_type as &str][&self.game_name as &str];
-        Ok(Aes256CbcDec::new(key.into(), &[0; 16].into())
-            .decrypt_padded_vec_mut::<Pkcs7>(data)?)
+        Ok(Aes256CbcDec::new(key.into(), &[0; 16].into()).decrypt_padded_vec_mut::<Pkcs7>(data)?)
     }
 }
