@@ -78,3 +78,27 @@ impl Cryptor {
         Ok(Aes256CbcDec::new(key.into(), &[0; 16].into()).decrypt_padded_vec_mut::<Pkcs7>(data)?)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_encrypt_decrypt() {
+        let cryptor = Cryptor::new("native", "classic");
+        let data = b"This is a test string for encryption and decryption.";
+        
+        let encrypted = cryptor.encrypt(data);
+        let decrypted = cryptor.decrypt(&encrypted).expect("Decryption failed");
+
+        assert_eq!(data.to_vec(), decrypted);
+    }
+
+    #[test]
+    fn test_invalid_decrypt() {
+        let cryptor = Cryptor::new("native", "classic");
+        let invalid_data = b"Invalid data";
+
+        assert!(cryptor.decrypt(invalid_data).is_err());
+    }
+}
