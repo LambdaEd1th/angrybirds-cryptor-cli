@@ -40,9 +40,8 @@ where
 }
 
 #[derive(Debug, thiserror::Error)]
+#[error(transparent)]
 pub enum Error {
-    #[error(transparent)]
-    CryptoError(#[from] crypto::Error),
-    #[error(transparent)]
+    CryptorError(#[from] crypto::Error),
     IoError(#[from] std::io::Error),
 }
