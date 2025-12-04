@@ -26,8 +26,8 @@ where
     F: FnOnce(&crypto::Cryptor, &[u8]) -> crypto::Result<Vec<u8>>,
 {
     let cryptor = crypto::Cryptor::new(
-        &args.file_type.to_possible_value().unwrap().get_name(),
-        &args.game_name.to_possible_value().unwrap().get_name(),
+        args.file_type.to_possible_value().unwrap().get_name(),
+        args.game_name.to_possible_value().unwrap().get_name(),
     );
 
     let mut input = Vec::new();
