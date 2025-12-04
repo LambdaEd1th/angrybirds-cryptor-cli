@@ -1,6 +1,6 @@
 [package]
 name = "angrybirds-cryptor-cli"
-version = "0.3.2"
+version = "0.3.3"
 edition = "2021"
 authors = ["ed1th"]
 description = "Angry Birds file cryptor"
@@ -14,5 +14,6 @@ repository = "https://github.com/LambdaEd1th/angrybirds-cryptor-cli"
 [dependencies]
 aes = { version = "0.8.4" }
 cbc = { version = "0.1.2", features = ["std"] }
-clap = { version = "4.5.40", features = ["derive", "help"] }
-thiserror = { version = "2.0.12" }
+clap = { version = "4.5.53", features = ["derive", "help"] }
+thiserror = { version = "2.0.17" }
+anyhow = "1.0.100"

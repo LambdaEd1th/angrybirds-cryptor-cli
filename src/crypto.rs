@@ -87,7 +87,7 @@ mod tests {
     fn test_encrypt_decrypt() {
         let cryptor = Cryptor::new("native", "classic");
         let data = b"This is a test string for encryption and decryption.";
-        
+
         let encrypted = cryptor.encrypt(data);
         let decrypted = cryptor.decrypt(&encrypted).expect("Decryption failed");
 
