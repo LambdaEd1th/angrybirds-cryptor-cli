@@ -1,7 +1,7 @@
 # Angry Birds Cryptor
 
 * Author: ed1th
-* Version: 0.3.3
+* Version: 0.3.4
 
 ## Description
 Angry Birds file cryptor<br>
