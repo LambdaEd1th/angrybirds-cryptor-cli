@@ -7,6 +7,8 @@ use aes::cipher::{
 type Aes256CbcEnc = cbc::Encryptor<aes::Aes256>;
 type Aes256CbcDec = cbc::Decryptor<aes::Aes256>;
 
+const ZERO_IV: &[u8; 16] = &[0u8; 16];
+
 pub type Result<T> = core::result::Result<T, Error>;
 
 #[derive(Debug, thiserror::Error)]
@@ -26,17 +28,16 @@ impl Cryptor {
     pub fn new(file_type: FileType, game_name: GameName) -> Result<Self> {
         let key_bytes = get_key(file_type, game_name)
             .ok_or(Error::UnsupportedCombination(file_type, game_name))?;
-        
+
         Ok(Self { key: *key_bytes })
     }
 
     pub fn encrypt(&self, data: &[u8]) -> Vec<u8> {
-        Aes256CbcEnc::new(&self.key.into(), &[0; 16].into())
-            .encrypt_padded_vec_mut::<Pkcs7>(data)
+        Aes256CbcEnc::new(&self.key.into(), ZERO_IV.into()).encrypt_padded_vec_mut::<Pkcs7>(data)
     }
 
     pub fn decrypt(&self, data: &[u8]) -> Result<Vec<u8>> {
-        Ok(Aes256CbcDec::new(&self.key.into(), &[0; 16].into())
+        Ok(Aes256CbcDec::new(&self.key.into(), ZERO_IV.into())
             .decrypt_padded_vec_mut::<Pkcs7>(data)?)
     }
 }
