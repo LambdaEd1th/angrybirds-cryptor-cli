@@ -1,81 +1,72 @@
-// --- src/crypto.rs ---
+use crate::cli::{FileType, GameName};
 use aes::cipher::{
     block_padding::{Pkcs7, UnpadError},
     BlockDecryptMut, BlockEncryptMut, KeyIvInit,
 };
-use std::{collections::HashMap, sync::LazyLock};
 
 type Aes256CbcEnc = cbc::Encryptor<aes::Aes256>;
 type Aes256CbcDec = cbc::Decryptor<aes::Aes256>;
 
 pub type Result<T> = core::result::Result<T, Error>;
 
-const KEYS: LazyLock<HashMap<&str, HashMap<&str, &[u8; 32]>>> = LazyLock::new(|| {
-    [
-        (
-            "native",
-            [
-                ("classic", b"USCaPQpA4TSNVxMI1v9SK9UC0yZuAnb2"),
-                ("rio", b"USCaPQpA4TSNVxMI1v9SK9UC0yZuAnb2"),
-                ("seasons", b"zePhest5faQuX2S2Apre@4reChAtEvUt"),
-                ("space", b"RmgdZ0JenLFgWwkYvCL2lSahFbEhFec4"),
-                ("friends", b"EJRbcWh81YG4YzjfLAPMssAnnzxQaDn1"),
-                ("starwars", b"An8t3mn8U6spiQ0zHHr3a1loDrRa3mtE"),
-                ("starwarsii", b"B0pm3TAlzkN9ghzoe2NizEllPdN0hQni"),
-                ("stella", b"4FzZOae60yAmxTClzdgfcr4BAbPIgj7X"),
-            ]
-            .into(),
-        ),
-        (
-            "save",
-            [
-                ("classic", b"44iUY5aTrlaYoet9lapRlaK1Ehlec5i0"),
-                ("rio", b"44iUY5aTrlaYoet9lapRlaK1Ehlec5i0"),
-                ("seasons", b"brU4u=EbR4s_A3APu6U#7B!axAm*We#5"),
-                ("space", b"TpeczKQL07HVdPbVUhAr6FjUsmRctyc5"),
-                ("friends", b"XN3OCmUFL6kINHuca2ZQL4gqJg0r18ol"),
-                ("starwars", b"e83Tph0R3aZ2jGK6eS91uLvQpL33vzNi"),
-                ("starwarsii", b"taT3vigDoNlqd44yiPbt21biCpVma6nb"),
-                ("stella", b"Bll3qkcy5fKrNVxZqtkFH19Ojn2sdJFu"),
-            ]
-            .into(),
-        ),
-        (
-            "downloaded",
-            [("friends", b"rF1pFq2wDzgR7PQ94dTFuXww0YvY7nfK")].into(),
-        ),
-    ]
-    .into()
-});
-
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error("AES cryption error: {0}")]
     CryptoError(#[from] UnpadError),
+    #[error("Unsupported combination: FileType {0:?} is not available for Game {1:?}")]
+    UnsupportedCombination(FileType, GameName),
 }
 
 #[derive(Clone, Debug)]
 pub struct Cryptor {
-    file_type: String,
-    game_name: String,
+    key: [u8; 32],
 }
 
 impl Cryptor {
-    pub fn new(file_type: &str, game_name: &str) -> Self {
-        Self {
-            file_type: file_type.to_lowercase(),
-            game_name: game_name.to_lowercase(),
-        }
+    pub fn new(file_type: FileType, game_name: GameName) -> Result<Self> {
+        let key_bytes = get_key(file_type, game_name)
+            .ok_or(Error::UnsupportedCombination(file_type, game_name))?;
+        
+        Ok(Self { key: *key_bytes })
     }
 
     pub fn encrypt(&self, data: &[u8]) -> Vec<u8> {
-        let key = KEYS[&self.file_type as &str][&self.game_name as &str];
-        Aes256CbcEnc::new(key.into(), &[0; 16].into()).encrypt_padded_vec_mut::<Pkcs7>(data)
+        Aes256CbcEnc::new(&self.key.into(), &[0; 16].into())
+            .encrypt_padded_vec_mut::<Pkcs7>(data)
     }
 
     pub fn decrypt(&self, data: &[u8]) -> Result<Vec<u8>> {
-        let key = KEYS[&self.file_type as &str][&self.game_name as &str];
-        Ok(Aes256CbcDec::new(key.into(), &[0; 16].into()).decrypt_padded_vec_mut::<Pkcs7>(data)?)
+        Ok(Aes256CbcDec::new(&self.key.into(), &[0; 16].into())
+            .decrypt_padded_vec_mut::<Pkcs7>(data)?)
+    }
+}
+
+const fn get_key(file_type: FileType, game_name: GameName) -> Option<&'static [u8; 32]> {
+    match (file_type, game_name) {
+        // --- Native Files ---
+        (FileType::Native, GameName::Classic) => Some(b"USCaPQpA4TSNVxMI1v9SK9UC0yZuAnb2"),
+        (FileType::Native, GameName::Rio) => Some(b"USCaPQpA4TSNVxMI1v9SK9UC0yZuAnb2"),
+        (FileType::Native, GameName::Seasons) => Some(b"zePhest5faQuX2S2Apre@4reChAtEvUt"),
+        (FileType::Native, GameName::Space) => Some(b"RmgdZ0JenLFgWwkYvCL2lSahFbEhFec4"),
+        (FileType::Native, GameName::Friends) => Some(b"EJRbcWh81YG4YzjfLAPMssAnnzxQaDn1"),
+        (FileType::Native, GameName::Starwars) => Some(b"An8t3mn8U6spiQ0zHHr3a1loDrRa3mtE"),
+        (FileType::Native, GameName::Starwarsii) => Some(b"B0pm3TAlzkN9ghzoe2NizEllPdN0hQni"),
+        (FileType::Native, GameName::Stella) => Some(b"4FzZOae60yAmxTClzdgfcr4BAbPIgj7X"),
+
+        // --- Save Files ---
+        (FileType::Save, GameName::Classic) => Some(b"44iUY5aTrlaYoet9lapRlaK1Ehlec5i0"),
+        (FileType::Save, GameName::Rio) => Some(b"44iUY5aTrlaYoet9lapRlaK1Ehlec5i0"),
+        (FileType::Save, GameName::Seasons) => Some(b"brU4u=EbR4s_A3APu6U#7B!axAm*We#5"),
+        (FileType::Save, GameName::Space) => Some(b"TpeczKQL07HVdPbVUhAr6FjUsmRctyc5"),
+        (FileType::Save, GameName::Friends) => Some(b"XN3OCmUFL6kINHuca2ZQL4gqJg0r18ol"),
+        (FileType::Save, GameName::Starwars) => Some(b"e83Tph0R3aZ2jGK6eS91uLvQpL33vzNi"),
+        (FileType::Save, GameName::Starwarsii) => Some(b"taT3vigDoNlqd44yiPbt21biCpVma6nb"),
+        (FileType::Save, GameName::Stella) => Some(b"Bll3qkcy5fKrNVxZqtkFH19Ojn2sdJFu"),
+
+        // --- Downloaded Files ---
+        (FileType::Downloaded, GameName::Friends) => Some(b"rF1pFq2wDzgR7PQ94dTFuXww0YvY7nfK"),
+
+        _ => None,
     }
 }
 
@@ -85,7 +76,7 @@ mod tests {
 
     #[test]
     fn test_encrypt_decrypt() {
-        let cryptor = Cryptor::new("native", "classic");
+        let cryptor = Cryptor::new(FileType::Native, GameName::Classic).unwrap();
         let data = b"This is a test string for encryption and decryption.";
 
         let encrypted = cryptor.encrypt(data);
@@ -96,9 +87,15 @@ mod tests {
 
     #[test]
     fn test_invalid_decrypt() {
-        let cryptor = Cryptor::new("native", "classic");
+        let cryptor = Cryptor::new(FileType::Native, GameName::Classic).unwrap();
         let invalid_data = b"Invalid data";
 
         assert!(cryptor.decrypt(invalid_data).is_err());
+    }
+
+    #[test]
+    fn test_unsupported_combination() {
+        let result = Cryptor::new(FileType::Downloaded, GameName::Classic);
+        assert!(matches!(result, Err(Error::UnsupportedCombination(_, _))));
     }
 }

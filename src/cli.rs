@@ -1,13 +1,14 @@
-// --- src/cli.rs ---
 use std::path::PathBuf;
 use clap::{Args, Parser, Subcommand, ValueEnum};
 
-const HELP_TEMPLATE: &str = "{before-help}{about} by @{author-with-newline}\n{usage-heading} {usage}\n\n{all-args}{after-help}";
-
 #[derive(Parser, Clone, Debug, PartialEq, Eq)]
-#[command(author, version, about, long_about = None)]
-#[command(next_line_help = true)]
-#[command(help_template = HELP_TEMPLATE)]
+#[command(
+    name = "angrybirds-cryptor-cli",
+    author = "ed1th",
+    version,
+    about = "Angry Birds file cryptor",
+    long_about = "A command-line tool to encrypt and decrypt Angry Birds game data."
+)]
 pub struct Cli {
     #[command(subcommand)]
     pub command: Commands,
@@ -36,7 +37,8 @@ pub struct CryptoArgs {
     pub output_file: PathBuf,
 }
 
-#[derive(ValueEnum, Clone, Debug, PartialEq, Eq)]
+// 添加 Copy
+#[derive(ValueEnum, Clone, Copy, Debug, PartialEq, Eq)]
 #[clap(rename_all = "lower")]
 pub enum FileType {
     Native,
@@ -44,7 +46,8 @@ pub enum FileType {
     Downloaded,
 }
 
-#[derive(ValueEnum, Clone, Debug, PartialEq, Eq)]
+// 添加 Copy
+#[derive(ValueEnum, Clone, Copy, Debug, PartialEq, Eq)]
 #[clap(rename_all = "lower")]
 pub enum GameName {
     Classic,
