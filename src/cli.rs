@@ -1,5 +1,5 @@
-use std::path::PathBuf;
 use clap::{Args, Parser, Subcommand, ValueEnum};
+use std::path::PathBuf;
 
 #[derive(Parser, Clone, Debug, PartialEq, Eq)]
 #[command(
@@ -26,18 +26,17 @@ pub enum Commands {
 pub struct CryptoArgs {
     #[arg(short, long, value_name = "FILE_TYPE")]
     pub file_type: FileType,
-    
+
     #[arg(short, long, value_name = "GAME_NAME")]
     pub game_name: GameName,
-    
+
     #[arg(short, long, value_name = "INPUT_FILE")]
     pub input_file: PathBuf,
-    
+
     #[arg(short, long, value_name = "OUTPUT_FILE")]
-    pub output_file: PathBuf,
+    pub output_file: Option<PathBuf>,
 }
 
-// 添加 Copy
 #[derive(ValueEnum, Clone, Copy, Debug, PartialEq, Eq)]
 #[clap(rename_all = "lower")]
 pub enum FileType {
@@ -46,7 +45,6 @@ pub enum FileType {
     Downloaded,
 }
 
-// 添加 Copy
 #[derive(ValueEnum, Clone, Copy, Debug, PartialEq, Eq)]
 #[clap(rename_all = "lower")]
 pub enum GameName {
