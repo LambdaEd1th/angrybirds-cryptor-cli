@@ -5,6 +5,8 @@ use aes::cipher::{
     block_padding::{Pkcs7, UnpadError},
     BlockDecryptMut, BlockEncryptMut, KeyIvInit,
 };
+use log::{debug, trace};
+use strum::IntoEnumIterator;
 
 type Aes256CbcEnc = cbc::Encryptor<aes::Aes256>;
 type Aes256CbcDec = cbc::Decryptor<aes::Aes256>;
@@ -26,40 +28,67 @@ pub enum Error {
 #[derive(Clone, Debug)]
 pub struct Cryptor {
     key: [u8; 32],
+    iv: [u8; 16], // Added IV field
 }
 
 impl Cryptor {
+    /// Create a Cryptor using built-in keys for specific games.
+    /// Uses Zero IV by default as per legacy Angry Birds format.
     pub fn new(file_type: FileType, game_name: GameName) -> Result<Self> {
         let key_bytes = get_key(file_type, game_name)
             .ok_or(Error::UnsupportedCombination(file_type, game_name))?;
 
-        Ok(Self { key: *key_bytes })
+        Ok(Self {
+            key: *key_bytes,
+            iv: *ZERO_IV,
+        })
+    }
+
+    /// Create a Cryptor using custom Key and optional IV.
+    /// If IV is None, it defaults to Zero IV.
+    pub fn new_custom(key: [u8; 32], iv: Option<[u8; 16]>) -> Self {
+        Self {
+            key,
+            iv: iv.unwrap_or(*ZERO_IV),
+        }
     }
 
     pub fn encrypt(&self, data: &[u8]) -> Vec<u8> {
-        Aes256CbcEnc::new(&self.key.into(), ZERO_IV.into()).encrypt_padded_vec_mut::<Pkcs7>(data)
+        // Use self.iv instead of static ZERO_IV
+        Aes256CbcEnc::new(&self.key.into(), &self.iv.into()).encrypt_padded_vec_mut::<Pkcs7>(data)
     }
 
     pub fn decrypt(&self, data: &[u8]) -> Result<Vec<u8>> {
-        // Try to decrypt. If the key is wrong, unpadding will likely fail and return an error.
-        Ok(Aes256CbcDec::new(&self.key.into(), ZERO_IV.into())
+        // Use self.iv instead of static ZERO_IV
+        Ok(Aes256CbcDec::new(&self.key.into(), &self.iv.into())
             .decrypt_padded_vec_mut::<Pkcs7>(data)?)
     }
 }
 
 /// Attempts to decrypt data by trying all known key combinations.
-/// Returns the decrypted data along with the detected FileType and GameName.
 pub fn try_decrypt_all(data: &[u8]) -> Result<(Vec<u8>, FileType, GameName)> {
-    for &(file_type, game_name) in ALL_COMBINATIONS {
-        // Check if get_key returns a key (some combinations in the list might technically be mapped to None in get_key, though unlikely here)
-        if let Some(key_bytes) = get_key(file_type, game_name) {
-            let cryptor = Cryptor { key: *key_bytes };
-            // If decryption succeeds (no padding error), we assume this is the correct key.
-            if let Ok(decrypted) = cryptor.decrypt(data) {
-                return Ok((decrypted, file_type, game_name));
+    debug!("Starting brute-force decryption on {} bytes", data.len());
+
+    for game_name in GameName::iter() {
+        for file_type in FileType::iter() {
+            trace!("Trying combination: {:?} - {:?}", game_name, file_type);
+
+            if let Some(key_bytes) = get_key(file_type, game_name) {
+                // Default logic uses ZERO_IV for auto-detection
+                let cryptor = Cryptor {
+                    key: *key_bytes,
+                    iv: *ZERO_IV,
+                };
+
+                if let Ok(decrypted) = cryptor.decrypt(data) {
+                    debug!("Key found! Combination: {:?} - {:?}", game_name, file_type);
+                    return Ok((decrypted, file_type, game_name));
+                }
             }
         }
     }
+
+    debug!("No valid key found after trying all combinations.");
     Err(Error::AutoDetectionFailed)
 }
 
@@ -92,24 +121,3 @@ const fn get_key(file_type: FileType, game_name: GameName) -> Option<&'static [u
         _ => None,
     }
 }
-
-// List of all valid combinations to iterate through for auto-detection.
-const ALL_COMBINATIONS: &[(FileType, GameName)] = &[
-    (FileType::Native, GameName::Classic),
-    (FileType::Native, GameName::Rio),
-    (FileType::Native, GameName::Seasons),
-    (FileType::Native, GameName::Space),
-    (FileType::Native, GameName::Friends),
-    (FileType::Native, GameName::Starwars),
-    (FileType::Native, GameName::Starwarsii),
-    (FileType::Native, GameName::Stella),
-    (FileType::Save, GameName::Classic),
-    (FileType::Save, GameName::Rio),
-    (FileType::Save, GameName::Seasons),
-    (FileType::Save, GameName::Space),
-    (FileType::Save, GameName::Friends),
-    (FileType::Save, GameName::Starwars),
-    (FileType::Save, GameName::Starwarsii),
-    (FileType::Save, GameName::Stella),
-    (FileType::Downloaded, GameName::Friends),
-];
