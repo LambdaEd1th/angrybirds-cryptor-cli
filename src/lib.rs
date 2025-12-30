@@ -2,8 +2,9 @@
 pub mod cli;
 pub mod constants;
 pub mod crypto;
+pub mod errors;
 
 // Re-export commonly used types
 pub use cli::{Cli, Commands, FileType, GameName};
 pub use crypto::Cryptor;
-// We can also re-export constants if needed, but usually accessing them via the module is fine.
+pub use errors::CryptorError; // 2. Re-export the error type

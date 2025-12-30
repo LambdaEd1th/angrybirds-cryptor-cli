@@ -1,5 +1,6 @@
 use anyhow::{anyhow, Context, Result};
 use clap::Parser;
+use indicatif::{ProgressBar, ProgressStyle}; // Import indicatif
 use log::{debug, error, info, warn};
 use std::{
     fs::{self, File},
@@ -34,7 +35,7 @@ fn main() -> Result<()> {
             process_files(
                 &args.input_file,
                 args.output_file,
-                constants::SUFFIX_ENCRYPTED, // Use constant
+                constants::SUFFIX_ENCRYPTED,
                 |data| Ok(cryptor.encrypt(data)),
             )?;
         }
@@ -45,7 +46,7 @@ fn main() -> Result<()> {
             process_files(
                 &args.input_file,
                 args.output_file,
-                constants::SUFFIX_DECRYPTED, // Use constant
+                constants::SUFFIX_DECRYPTED,
                 |data| {
                     if let Some(hex_key) = &args.key {
                         debug!("Decrypting with custom hex key.");
@@ -66,11 +67,6 @@ fn main() -> Result<()> {
 
     Ok(())
 }
-
-// ... (Rest of the helper functions remain unchanged) ...
-// Ensure you keep create_custom_cryptor, process_files, save_output, generate_suffixed_path
-// exactly as they were in the previous step, just updating main() logic is sufficient.
-// Below are the unchanged helpers for completeness if you copy-paste the whole file.
 
 fn create_custom_cryptor(hex_key: &str, hex_iv: Option<&str>) -> Result<crypto::Cryptor> {
     let key_bytes = hex::decode(hex_key).context("Failed to decode hex key")?;
@@ -114,12 +110,14 @@ where
         match processor(&data) {
             Ok(processed_data) => {
                 save_output(input_path, output_path, suffix, &processed_data)?;
+                info!("Successfully processed: {:?}", input_path);
             }
             Err(e) => error!("Failed to process {:?}: {}", input_path, e),
         }
     } else if input_path.is_dir() {
         info!("Processing directory: {:?}", input_path);
 
+        // Validate output directory
         if let Some(ref out_dir) = output_path {
             if !out_dir.exists() {
                 fs::create_dir_all(out_dir)?;
@@ -128,44 +126,88 @@ where
             }
         }
 
-        for entry in WalkDir::new(input_path).into_iter().filter_map(|e| e.ok()) {
+        // 1. Collect all files first to determine total count for the progress bar
+        info!("Scanning files...");
+        let files: Vec<_> = WalkDir::new(input_path)
+            .into_iter()
+            .filter_map(|e| e.ok())
+            .filter(|e| e.path().is_file())
+            .collect();
+
+        let total_files = files.len() as u64;
+        info!("Found {} files. Starting processing...", total_files);
+
+        // 2. Initialize Progress Bar
+        let pb = ProgressBar::new(total_files);
+        pb.set_style(
+            ProgressStyle::with_template(
+                "{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {pos}/{len} ({eta}) {msg}",
+            )
+            .unwrap()
+            .progress_chars("#>-"),
+        );
+
+        let mut success_count = 0;
+        let mut fail_count = 0;
+
+        for entry in files {
             let path = entry.path();
-            if path.is_file() {
-                debug!("Found file: {:?}", path);
+            // Update progress bar message with current filename (truncated if too long is handled by UI usually, but keeping it simple here)
+            pb.set_message(format!("{:?}", path.file_name().unwrap_or_default()));
 
-                let data = match fs::read(path) {
-                    Ok(d) => d,
-                    Err(e) => {
-                        error!("Could not read {:?}: {}", path, e);
-                        continue;
-                    }
-                };
+            let data = match fs::read(path) {
+                Ok(d) => d,
+                Err(e) => {
+                    // Use pb.suspend to print logs without breaking the bar visual
+                    pb.suspend(|| error!("Could not read {:?}: {}", path, e));
+                    fail_count += 1;
+                    pb.inc(1);
+                    continue;
+                }
+            };
 
-                match processor(&data) {
-                    Ok(processed_data) => {
-                        let target_path = if let Some(ref out_dir) = output_path {
-                            let relative = path.strip_prefix(input_path).unwrap_or(path);
-                            let dest = out_dir.join(relative);
+            match processor(&data) {
+                Ok(processed_data) => {
+                    let target_path = if let Some(ref out_dir) = output_path {
+                        let relative = path.strip_prefix(input_path).unwrap_or(path);
+                        let dest = out_dir.join(relative);
 
-                            if let Some(parent) = dest.parent() {
-                                fs::create_dir_all(parent)?;
+                        if let Some(parent) = dest.parent() {
+                            if let Err(e) = fs::create_dir_all(parent) {
+                                pb.suspend(|| error!("Failed to create dir {:?}: {}", parent, e));
+                                fail_count += 1;
+                                pb.inc(1);
+                                continue;
                             }
-                            dest
-                        } else {
-                            generate_suffixed_path(path, suffix)
-                        };
-
-                        info!("Saving to: {:?}", target_path);
-                        if let Err(e) = fs::write(&target_path, processed_data) {
-                            error!("Failed to write to {:?}: {}", target_path, e);
                         }
-                    }
-                    Err(e) => {
-                        warn!("Skipping {:?}: {}", path, e);
+                        dest
+                    } else {
+                        generate_suffixed_path(path, suffix)
+                    };
+
+                    if let Err(e) = fs::write(&target_path, processed_data) {
+                        pb.suspend(|| error!("Failed to write to {:?}: {}", target_path, e));
+                        fail_count += 1;
+                    } else {
+                        success_count += 1;
                     }
                 }
+                Err(e) => {
+                    pb.suspend(|| warn!("Skipping {:?}: {}", path, e));
+                    fail_count += 1;
+                }
             }
+
+            pb.inc(1);
         }
+
+        pb.finish_with_message("Done");
+
+        // 3. Print Summary Stats
+        info!(
+            "Batch processing complete. Total: {}, Success: {}, Failed: {}",
+            total_files, success_count, fail_count
+        );
     } else {
         anyhow::bail!("Input path does not exist: {:?}", input_path);
     }
@@ -184,6 +226,7 @@ fn save_output(
         None => generate_suffixed_path(input_path, suffix),
     };
 
+    // info! might clutter single file mode, but it's acceptable.
     info!("Saving output to: {:?}", output_path);
     File::create(&output_path)?.write_all(data)?;
     Ok(())

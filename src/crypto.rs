@@ -1,63 +1,52 @@
-use crate::cli::{FileType, GameName};
-use aes::cipher::{
-    block_padding::{Pkcs7, UnpadError},
-    BlockDecryptMut, BlockEncryptMut, KeyIvInit,
+use crate::{
+    cli::{FileType, GameName},
+    constants::{get_key, DEFAULT_IV},
+    errors::CryptorError,
 };
+use aes::cipher::{block_padding::Pkcs7, BlockDecryptMut, BlockEncryptMut, KeyIvInit};
 use log::{debug, trace};
 use strum::IntoEnumIterator;
 
 type Aes256CbcEnc = cbc::Encryptor<aes::Aes256>;
 type Aes256CbcDec = cbc::Decryptor<aes::Aes256>;
 
-const ZERO_IV: &[u8; 16] = &[0u8; 16];
-
-pub type Result<T> = core::result::Result<T, Error>;
-
-#[derive(Debug, thiserror::Error)]
-pub enum Error {
-    #[error("AES cryption error: {0}")]
-    CryptoError(#[from] UnpadError),
-    #[error("Unsupported combination: FileType {0:?} is not available for Game {1:?}")]
-    UnsupportedCombination(FileType, GameName),
-    #[error("Auto detection failed: No valid key found for the provided data.")]
-    AutoDetectionFailed,
-}
+// Define a custom Result alias using our separated CryptorError
+pub type Result<T> = core::result::Result<T, CryptorError>;
 
 #[derive(Clone, Debug)]
 pub struct Cryptor {
     key: [u8; 32],
-    iv: [u8; 16], // Added IV field
+    iv: [u8; 16],
 }
 
 impl Cryptor {
     /// Create a Cryptor using built-in keys for specific games.
-    /// Uses Zero IV by default as per legacy Angry Birds format.
+    /// Uses the default Zero IV as per legacy Angry Birds format.
     pub fn new(file_type: FileType, game_name: GameName) -> Result<Self> {
         let key_bytes = get_key(file_type, game_name)
-            .ok_or(Error::UnsupportedCombination(file_type, game_name))?;
+            .ok_or(CryptorError::UnsupportedCombination(file_type, game_name))?;
 
         Ok(Self {
             key: *key_bytes,
-            iv: *ZERO_IV,
+            iv: DEFAULT_IV,
         })
     }
 
     /// Create a Cryptor using custom Key and optional IV.
-    /// If IV is None, it defaults to Zero IV.
+    /// If IV is None, it defaults to the shared Zero IV.
     pub fn new_custom(key: [u8; 32], iv: Option<[u8; 16]>) -> Self {
         Self {
             key,
-            iv: iv.unwrap_or(*ZERO_IV),
+            iv: iv.unwrap_or(DEFAULT_IV),
         }
     }
 
     pub fn encrypt(&self, data: &[u8]) -> Vec<u8> {
-        // Use self.iv instead of static ZERO_IV
         Aes256CbcEnc::new(&self.key.into(), &self.iv.into()).encrypt_padded_vec_mut::<Pkcs7>(data)
     }
 
     pub fn decrypt(&self, data: &[u8]) -> Result<Vec<u8>> {
-        // Use self.iv instead of static ZERO_IV
+        // Map the AES UnpadError to our custom PaddingError defined in errors.rs
         Ok(Aes256CbcDec::new(&self.key.into(), &self.iv.into())
             .decrypt_padded_vec_mut::<Pkcs7>(data)?)
     }
@@ -72,10 +61,9 @@ pub fn try_decrypt_all(data: &[u8]) -> Result<(Vec<u8>, FileType, GameName)> {
             trace!("Trying combination: {:?} - {:?}", game_name, file_type);
 
             if let Some(key_bytes) = get_key(file_type, game_name) {
-                // Default logic uses ZERO_IV for auto-detection
                 let cryptor = Cryptor {
                     key: *key_bytes,
-                    iv: *ZERO_IV,
+                    iv: DEFAULT_IV,
                 };
 
                 if let Ok(decrypted) = cryptor.decrypt(data) {
@@ -87,35 +75,75 @@ pub fn try_decrypt_all(data: &[u8]) -> Result<(Vec<u8>, FileType, GameName)> {
     }
 
     debug!("No valid key found after trying all combinations.");
-    Err(Error::AutoDetectionFailed)
+    Err(CryptorError::AutoDetectionFailed)
 }
 
-// Helper to look up keys based on type and game.
-const fn get_key(file_type: FileType, game_name: GameName) -> Option<&'static [u8; 32]> {
-    match (file_type, game_name) {
-        // --- Native Files ---
-        (FileType::Native, GameName::Classic) => Some(b"USCaPQpA4TSNVxMI1v9SK9UC0yZuAnb2"),
-        (FileType::Native, GameName::Rio) => Some(b"USCaPQpA4TSNVxMI1v9SK9UC0yZuAnb2"),
-        (FileType::Native, GameName::Seasons) => Some(b"zePhest5faQuX2S2Apre@4reChAtEvUt"),
-        (FileType::Native, GameName::Space) => Some(b"RmgdZ0JenLFgWwkYvCL2lSahFbEhFec4"),
-        (FileType::Native, GameName::Friends) => Some(b"EJRbcWh81YG4YzjfLAPMssAnnzxQaDn1"),
-        (FileType::Native, GameName::Starwars) => Some(b"An8t3mn8U6spiQ0zHHr3a1loDrRa3mtE"),
-        (FileType::Native, GameName::Starwarsii) => Some(b"B0pm3TAlzkN9ghzoe2NizEllPdN0hQni"),
-        (FileType::Native, GameName::Stella) => Some(b"4FzZOae60yAmxTClzdgfcr4BAbPIgj7X"),
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-        // --- Save Files ---
-        (FileType::Save, GameName::Classic) => Some(b"44iUY5aTrlaYoet9lapRlaK1Ehlec5i0"),
-        (FileType::Save, GameName::Rio) => Some(b"44iUY5aTrlaYoet9lapRlaK1Ehlec5i0"),
-        (FileType::Save, GameName::Seasons) => Some(b"brU4u=EbR4s_A3APu6U#7B!axAm*We#5"),
-        (FileType::Save, GameName::Space) => Some(b"TpeczKQL07HVdPbVUhAr6FjUsmRctyc5"),
-        (FileType::Save, GameName::Friends) => Some(b"XN3OCmUFL6kINHuca2ZQL4gqJg0r18ol"),
-        (FileType::Save, GameName::Starwars) => Some(b"e83Tph0R3aZ2jGK6eS91uLvQpL33vzNi"),
-        (FileType::Save, GameName::Starwarsii) => Some(b"taT3vigDoNlqd44yiPbt21biCpVma6nb"),
-        (FileType::Save, GameName::Stella) => Some(b"Bll3qkcy5fKrNVxZqtkFH19Ojn2sdJFu"),
+    #[test]
+    fn test_encrypt_decrypt_cycle() {
+        let file_type = FileType::Native;
+        let game_name = GameName::Space;
 
-        // --- Downloaded Files ---
-        (FileType::Downloaded, GameName::Friends) => Some(b"rF1pFq2wDzgR7PQ94dTFuXww0YvY7nfK"),
+        let cryptor = Cryptor::new(file_type, game_name).expect("Should support Native Space");
 
-        _ => None,
+        let original_data = b"Angry Birds Space!";
+        let encrypted = cryptor.encrypt(original_data);
+        let decrypted = cryptor.decrypt(&encrypted).expect("Decryption failed");
+
+        assert_eq!(original_data.as_slice(), decrypted.as_slice());
+        assert_ne!(original_data.as_slice(), encrypted.as_slice());
+    }
+
+    #[test]
+    fn test_unsupported_combination() {
+        let result = Cryptor::new(FileType::Downloaded, GameName::Classic);
+        // Verify that it returns the specific UnsupportedCombination error
+        assert!(matches!(
+            result,
+            Err(CryptorError::UnsupportedCombination(_, _))
+        ));
+    }
+
+    #[test]
+    fn test_auto_detection() {
+        let target_ft = FileType::Save;
+        let target_gn = GameName::Seasons;
+        let secret_msg = b"Secret Level Data";
+
+        let cryptor = Cryptor::new(target_ft, target_gn).unwrap();
+        let encrypted_data = cryptor.encrypt(secret_msg);
+
+        let (decrypted, detected_ft, detected_gn) =
+            try_decrypt_all(&encrypted_data).expect("Auto detection should succeed");
+
+        assert_eq!(decrypted, secret_msg);
+        assert_eq!(detected_ft, target_ft);
+        assert_eq!(detected_gn, target_gn);
+    }
+
+    #[test]
+    fn test_decrypt_error() {
+        let cryptor = Cryptor::new(FileType::Native, GameName::Classic).unwrap();
+        let invalid_data = vec![0u8; 32];
+
+        // Verify that it returns the PaddingError
+        let result = cryptor.decrypt(&invalid_data);
+        assert!(matches!(result, Err(CryptorError::PaddingError(_))));
+    }
+
+    #[test]
+    fn test_custom_key_iv() {
+        let key = [0x01; 32];
+        let iv = [0x02; 16];
+        let msg = b"Custom Crypto Test";
+
+        let cryptor = Cryptor::new_custom(key, Some(iv));
+        let encrypted = cryptor.encrypt(msg);
+        let decrypted = cryptor.decrypt(&encrypted).expect("Decrypt custom failed");
+
+        assert_eq!(msg.as_slice(), decrypted.as_slice());
     }
 }
