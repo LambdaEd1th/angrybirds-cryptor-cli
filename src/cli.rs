@@ -1,3 +1,5 @@
+// src/cli.rs
+
 use clap::{Args, Parser, Subcommand, ValueEnum};
 use std::path::PathBuf;
 
@@ -17,18 +19,49 @@ pub struct Cli {
 #[derive(Subcommand, Clone, Debug, PartialEq, Eq)]
 pub enum Commands {
     /// Encrypt file
-    Encrypt(CryptoArgs),
+    Encrypt(EncryptArgs),
     /// Decrypt file
-    Decrypt(CryptoArgs),
+    Decrypt(DecryptArgs),
 }
 
 #[derive(Args, Clone, Debug, PartialEq, Eq)]
-pub struct CryptoArgs {
+pub struct EncryptArgs {
     #[arg(short, long, value_name = "FILE_TYPE")]
     pub file_type: FileType,
 
     #[arg(short, long, value_name = "GAME_NAME")]
     pub game_name: GameName,
+
+    #[arg(short, long, value_name = "INPUT_FILE")]
+    pub input_file: PathBuf,
+
+    #[arg(short, long, value_name = "OUTPUT_FILE")]
+    pub output_file: Option<PathBuf>,
+}
+
+#[derive(Args, Clone, Debug, PartialEq, Eq)]
+pub struct DecryptArgs {
+    // If --auto is present, file_type is not required.
+    #[arg(
+        short,
+        long,
+        value_name = "FILE_TYPE",
+        required_unless_present = "auto"
+    )]
+    pub file_type: Option<FileType>,
+
+    // If --auto is present, game_name is not required.
+    #[arg(
+        short,
+        long,
+        value_name = "GAME_NAME",
+        required_unless_present = "auto"
+    )]
+    pub game_name: Option<GameName>,
+
+    // Flag to enable automatic key detection.
+    #[arg(long, action = clap::ArgAction::SetTrue)]
+    pub auto: bool,
 
     #[arg(short, long, value_name = "INPUT_FILE")]
     pub input_file: PathBuf,

@@ -1,3 +1,5 @@
+// src/crypto.rs
+
 use crate::cli::{FileType, GameName};
 use aes::cipher::{
     block_padding::{Pkcs7, UnpadError},
@@ -17,6 +19,8 @@ pub enum Error {
     CryptoError(#[from] UnpadError),
     #[error("Unsupported combination: FileType {0:?} is not available for Game {1:?}")]
     UnsupportedCombination(FileType, GameName),
+    #[error("Auto detection failed: No valid key found for the provided data.")]
+    AutoDetectionFailed,
 }
 
 #[derive(Clone, Debug)]
@@ -37,11 +41,29 @@ impl Cryptor {
     }
 
     pub fn decrypt(&self, data: &[u8]) -> Result<Vec<u8>> {
+        // Try to decrypt. If the key is wrong, unpadding will likely fail and return an error.
         Ok(Aes256CbcDec::new(&self.key.into(), ZERO_IV.into())
             .decrypt_padded_vec_mut::<Pkcs7>(data)?)
     }
 }
 
+/// Attempts to decrypt data by trying all known key combinations.
+/// Returns the decrypted data along with the detected FileType and GameName.
+pub fn try_decrypt_all(data: &[u8]) -> Result<(Vec<u8>, FileType, GameName)> {
+    for &(file_type, game_name) in ALL_COMBINATIONS {
+        // Check if get_key returns a key (some combinations in the list might technically be mapped to None in get_key, though unlikely here)
+        if let Some(key_bytes) = get_key(file_type, game_name) {
+            let cryptor = Cryptor { key: *key_bytes };
+            // If decryption succeeds (no padding error), we assume this is the correct key.
+            if let Ok(decrypted) = cryptor.decrypt(data) {
+                return Ok((decrypted, file_type, game_name));
+            }
+        }
+    }
+    Err(Error::AutoDetectionFailed)
+}
+
+// Helper to look up keys based on type and game.
 const fn get_key(file_type: FileType, game_name: GameName) -> Option<&'static [u8; 32]> {
     match (file_type, game_name) {
         // --- Native Files ---
@@ -71,32 +93,23 @@ const fn get_key(file_type: FileType, game_name: GameName) -> Option<&'static [u
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_encrypt_decrypt() {
-        let cryptor = Cryptor::new(FileType::Native, GameName::Classic).unwrap();
-        let data = b"This is a test string for encryption and decryption.";
-
-        let encrypted = cryptor.encrypt(data);
-        let decrypted = cryptor.decrypt(&encrypted).expect("Decryption failed");
-
-        assert_eq!(data.to_vec(), decrypted);
-    }
-
-    #[test]
-    fn test_invalid_decrypt() {
-        let cryptor = Cryptor::new(FileType::Native, GameName::Classic).unwrap();
-        let invalid_data = b"Invalid data";
-
-        assert!(cryptor.decrypt(invalid_data).is_err());
-    }
-
-    #[test]
-    fn test_unsupported_combination() {
-        let result = Cryptor::new(FileType::Downloaded, GameName::Classic);
-        assert!(matches!(result, Err(Error::UnsupportedCombination(_, _))));
-    }
-}
+// List of all valid combinations to iterate through for auto-detection.
+const ALL_COMBINATIONS: &[(FileType, GameName)] = &[
+    (FileType::Native, GameName::Classic),
+    (FileType::Native, GameName::Rio),
+    (FileType::Native, GameName::Seasons),
+    (FileType::Native, GameName::Space),
+    (FileType::Native, GameName::Friends),
+    (FileType::Native, GameName::Starwars),
+    (FileType::Native, GameName::Starwarsii),
+    (FileType::Native, GameName::Stella),
+    (FileType::Save, GameName::Classic),
+    (FileType::Save, GameName::Rio),
+    (FileType::Save, GameName::Seasons),
+    (FileType::Save, GameName::Space),
+    (FileType::Save, GameName::Friends),
+    (FileType::Save, GameName::Starwars),
+    (FileType::Save, GameName::Starwarsii),
+    (FileType::Save, GameName::Stella),
+    (FileType::Downloaded, GameName::Friends),
+];

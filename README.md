@@ -30,18 +30,18 @@ You can build the project from source using Cargo. Ensure you have the [Rust too
 
 ```bash
 # Clone the repository (if applicable) or navigate to the source directory
-cd angrybirds-cryptor-cli
+cd angrybirds_cryptor_cli
 
 # Build the release binary
 cargo build --release
 ````
 
-The compiled binary will be located at `target/release/angrybirds-cryptor-cli`.
+The compiled binary will be located at `target/release/angrybirds_cryptor_cli`.
 
 ## Usage
 
 ```bash
-angrybirds-cryptor-cli <COMMAND> [OPTIONS]
+angrybirds_cryptor_cli <COMMAND> [OPTIONS]
 ```
 
 ### Commands
@@ -66,7 +66,7 @@ angrybirds-cryptor-cli <COMMAND> [OPTIONS]
 Decrypt a level file (`example.lua`) from *Angry Birds Classic*:
 
 ```bash
-angrybirds-cryptor-cli decrypt -f native -g classic -i example.lua -o example.dec.lua
+angrybirds_cryptor_cli decrypt -f native -g classic -i example.lua -o example.dec.lua
 ```
 
 #### 2\. Encrypting a Save File
@@ -74,7 +74,7 @@ angrybirds-cryptor-cli decrypt -f native -g classic -i example.lua -o example.de
 Encrypt a modified save file back for *Angry Birds Seasons*:
 
 ```bash
-angrybirds-cryptor-cli encrypt -f save -g seasons -i progress.json -o progress.dat
+angrybirds_cryptor_cli encrypt -f save -g seasons -i progress.json -o progress.dat
 ```
 
 #### 3\. Quick Decrypt (Auto-naming)
@@ -82,7 +82,7 @@ angrybirds-cryptor-cli encrypt -f save -g seasons -i progress.json -o progress.d
 Decrypt a file without specifying an output name. This will create `highscores_decrypted.lua`:
 
 ```bash
-angrybirds-cryptor-cli decrypt -f save -g rio -i highscores.lua
+angrybirds_cryptor_cli decrypt -f save -g rio -i highscores.lua
 ```
 
 ## License
