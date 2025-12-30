@@ -1,8 +1,11 @@
-// Expose the internal modules so they can be used by the binary or external crates.
+// src/lib.rs
+
+// Expose the internal modules
 pub mod cli;
+pub mod constants;
 pub mod crypto;
 
-// Re-export commonly used types for convenient access.
-// This allows users to import them directly from the crate root (e.g., use angrybirds_cryptor_cli::Cryptor).
-pub use crypto::Cryptor;
+// Re-export commonly used types
 pub use cli::{Cli, Commands, FileType, GameName};
+pub use crypto::Cryptor;
+// We can also re-export constants if needed, but usually accessing them via the module is fine.

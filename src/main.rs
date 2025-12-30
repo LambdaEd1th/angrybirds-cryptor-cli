@@ -10,7 +10,8 @@ use std::{
 };
 use walkdir::WalkDir;
 
-use angrybirds_cryptor_cli::{cli, crypto};
+// Import constants
+use angrybirds_cryptor_cli::{cli, constants, crypto};
 
 fn main() -> Result<()> {
     // 1. Initialize Logger
@@ -24,49 +25,55 @@ fn main() -> Result<()> {
         cli::Commands::Encrypt(args) => {
             info!("Mode: Encrypt");
 
-            // Determine Cryptor strategy (Custom Key vs Lookup)
             let cryptor = if let Some(hex_key) = args.key {
                 debug!("Using custom hex key.");
                 create_custom_cryptor(&hex_key, args.iv.as_deref())?
             } else {
                 debug!("Using built-in key lookup.");
-                // Unwrap is safe due to clap constraints (required_unless_present="key")
                 crypto::Cryptor::new(args.file_type.unwrap(), args.game_name.unwrap())?
             };
 
-            process_files(&args.input_file, args.output_file, "_encrypted", |data| {
-                Ok(cryptor.encrypt(data))
-            })?;
+            process_files(
+                &args.input_file,
+                args.output_file,
+                constants::SUFFIX_ENCRYPTED, // Use constant
+                |data| Ok(cryptor.encrypt(data)),
+            )?;
         }
 
         cli::Commands::Decrypt(args) => {
             info!("Mode: Decrypt");
 
-            process_files(&args.input_file, args.output_file, "_decrypted", |data| {
-                if let Some(hex_key) = &args.key {
-                    // Priority 1: Custom Key
-                    debug!("Decrypting with custom hex key.");
-                    let cryptor = create_custom_cryptor(hex_key, args.iv.as_deref())?;
-                    Ok(cryptor.decrypt(data)?)
-                } else if args.auto {
-                    // Priority 2: Auto Detection
-                    let (decrypted, _, _) = crypto::try_decrypt_all(data)?;
-                    Ok(decrypted)
-                } else {
-                    // Priority 3: Manual Lookup
-                    // Unwrap safe due to clap constraints
-                    let cryptor =
-                        crypto::Cryptor::new(args.file_type.unwrap(), args.game_name.unwrap())?;
-                    Ok(cryptor.decrypt(data)?)
-                }
-            })?;
+            process_files(
+                &args.input_file,
+                args.output_file,
+                constants::SUFFIX_DECRYPTED, // Use constant
+                |data| {
+                    if let Some(hex_key) = &args.key {
+                        debug!("Decrypting with custom hex key.");
+                        let cryptor = create_custom_cryptor(hex_key, args.iv.as_deref())?;
+                        Ok(cryptor.decrypt(data)?)
+                    } else if args.auto {
+                        let (decrypted, _, _) = crypto::try_decrypt_all(data)?;
+                        Ok(decrypted)
+                    } else {
+                        let cryptor =
+                            crypto::Cryptor::new(args.file_type.unwrap(), args.game_name.unwrap())?;
+                        Ok(cryptor.decrypt(data)?)
+                    }
+                },
+            )?;
         }
     }
 
     Ok(())
 }
 
-/// Helper to parse hex key/iv and create a Cryptor instance
+// ... (Rest of the helper functions remain unchanged) ...
+// Ensure you keep create_custom_cryptor, process_files, save_output, generate_suffixed_path
+// exactly as they were in the previous step, just updating main() logic is sufficient.
+// Below are the unchanged helpers for completeness if you copy-paste the whole file.
+
 fn create_custom_cryptor(hex_key: &str, hex_iv: Option<&str>) -> Result<crypto::Cryptor> {
     let key_bytes = hex::decode(hex_key).context("Failed to decode hex key")?;
     if key_bytes.len() != 32 {
@@ -93,7 +100,6 @@ fn create_custom_cryptor(hex_key: &str, hex_iv: Option<&str>) -> Result<crypto::
     Ok(crypto::Cryptor::new_custom(key_array, iv_array))
 }
 
-/// Generic function to handle file or directory processing.
 fn process_files<F>(
     input_path: &Path,
     output_path: Option<PathBuf>,
