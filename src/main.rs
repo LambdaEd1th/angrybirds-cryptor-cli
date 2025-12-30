@@ -157,14 +157,12 @@ where
 }
 
 fn save_output(input: &Path, output: Option<PathBuf>, suffix: &str, data: &[u8]) -> Result<()> {
-    // unwrap_or_else is safe as it provides a fallback value
     let out = output.unwrap_or_else(|| generate_suffixed_path(input, suffix));
     File::create(out)?.write_all(data)?;
     Ok(())
 }
 
 fn generate_suffixed_path(path: &Path, suffix: &str) -> PathBuf {
-    // unwrap_or_default is safe
     let stem = path.file_stem().unwrap_or_default().to_string_lossy();
     let ext = path
         .extension()
