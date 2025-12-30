@@ -6,7 +6,6 @@ pub enum CryptorError {
     #[error("Decryption failed (Padding Error). This usually means the Key or IV is incorrect for this file.")]
     PaddingError(#[from] UnpadError),
 
-    // CHANGED: Both file type and game name are strings
     #[error("Unsupported combination: The file type '{0}' is not available (or unknown) for the game '{1}'.")]
     UnsupportedCombination(String, String),
 
