@@ -11,9 +11,17 @@ use angrybirds_cryptor_cli::{cli, config, constants, crypto};
 
 fn main() -> Result<()> {
     let args = cli::Cli::parse();
-    let default_log_level = if args.verbose { "debug" } else { "info" };
-    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or(default_log_level))
-        .init();
+
+    // Determine log level: Quiet -> Error, Verbose -> Debug, Default -> Info
+    let log_level = if args.quiet {
+        "error"
+    } else if args.verbose {
+        "debug"
+    } else {
+        "info"
+    };
+
+    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or(log_level)).init();
 
     // Load config (defaults + user overrides)
     let cfg = config::Config::load_or_default(args.config.as_deref())?;
@@ -98,7 +106,6 @@ fn main() -> Result<()> {
 fn create_custom_cryptor(hex_key: &str, hex_iv: Option<&str>) -> Result<crypto::Cryptor> {
     let key_bytes = hex::decode(hex_key).context("Failed to decode hex key")?;
 
-    // Explicit length check
     if key_bytes.len() != 32 {
         return Err(anyhow!(
             "Key must be 32 bytes (64 hex chars), got {} bytes",

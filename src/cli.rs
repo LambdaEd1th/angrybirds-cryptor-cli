@@ -17,16 +17,21 @@ pub struct Cli {
     #[arg(long, global = true)]
     pub config: Option<PathBuf>,
 
-    /// Enable verbose logging.
+    /// Enable verbose logging (Debug level).
     #[arg(short, long, global = true)]
     pub verbose: bool,
+
+    /// Suppress all output except errors (Error level).
+    /// Conflicts with --verbose.
+    #[arg(short, long, global = true, conflicts_with = "verbose")]
+    pub quiet: bool,
 }
 
 #[derive(Subcommand, Clone, Debug, PartialEq, Eq)]
 pub enum Commands {
     Encrypt(EncryptArgs),
     Decrypt(DecryptArgs),
-
+    
     /// Generate a default configuration file.
     InitConfig(InitConfigArgs),
 }
