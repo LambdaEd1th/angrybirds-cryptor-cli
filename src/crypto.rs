@@ -1,5 +1,3 @@
-// src/crypto.rs
-
 use crate::cli::{FileType, GameName};
 use aes::cipher::{
     block_padding::{Pkcs7, UnpadError},

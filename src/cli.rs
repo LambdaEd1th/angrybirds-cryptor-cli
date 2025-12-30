@@ -1,5 +1,3 @@
-// src/cli.rs
-
 use clap::{Args, Parser, Subcommand, ValueEnum};
 use std::path::PathBuf;
 use strum::EnumIter;

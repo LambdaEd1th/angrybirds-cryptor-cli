@@ -1,5 +1,3 @@
-// src/main.rs
-
 use anyhow::{anyhow, Context, Result};
 use clap::Parser;
 use log::{debug, error, info, warn};

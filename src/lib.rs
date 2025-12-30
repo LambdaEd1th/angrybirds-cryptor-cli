@@ -1,5 +1,3 @@
-// src/lib.rs
-
 // Expose the internal modules
 pub mod cli;
 pub mod constants;

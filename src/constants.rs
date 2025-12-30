@@ -1,5 +1,3 @@
-// src/constants.rs
-
 use crate::cli::{FileType, GameName};
 
 /// The default Initialization Vector (IV) used by legacy Angry Birds games.
