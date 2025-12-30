@@ -21,9 +21,9 @@ pub struct Cli {
 
 #[derive(Subcommand, Clone, Debug, PartialEq, Eq)]
 pub enum Commands {
-    /// Encrypt file or directory
+    /// Encrypt a single file
     Encrypt(EncryptArgs),
-    /// Decrypt file or directory
+    /// Decrypt a single file
     Decrypt(DecryptArgs),
 }
 
@@ -38,25 +38,22 @@ pub struct EncryptArgs {
     pub game_name: Option<GameName>,
 
     /// Custom Hex Key (32 bytes / 64 hex characters).
-    /// Overrides game-name/file-type lookup.
     #[arg(long, value_name = "HEX_KEY")]
     pub key: Option<String>,
 
     /// Custom Hex IV (16 bytes / 32 hex characters).
-    /// Default is all zeros if not specified.
     #[arg(long, value_name = "HEX_IV")]
     pub iv: Option<String>,
 
-    #[arg(short, long, value_name = "INPUT_PATH")]
+    #[arg(short, long, value_name = "INPUT_FILE")]
     pub input_file: PathBuf,
 
-    #[arg(short, long, value_name = "OUTPUT_PATH")]
+    #[arg(short, long, value_name = "OUTPUT_FILE")]
     pub output_file: Option<PathBuf>,
 }
 
 #[derive(Args, Clone, Debug, PartialEq, Eq)]
 pub struct DecryptArgs {
-    // If --auto or --key is present, file_type is not required.
     #[arg(
         short,
         long,
@@ -65,7 +62,6 @@ pub struct DecryptArgs {
     )]
     pub file_type: Option<FileType>,
 
-    // If --auto or --key is present, game_name is not required.
     #[arg(
         short,
         long,
@@ -79,17 +75,16 @@ pub struct DecryptArgs {
     pub key: Option<String>,
 
     /// Custom Hex IV (16 bytes / 32 hex characters).
-    /// Default is all zeros if not specified.
     #[arg(long, value_name = "HEX_IV")]
     pub iv: Option<String>,
 
-    #[arg(long, action = clap::ArgAction::SetTrue)]
+    #[arg(short,long, action = clap::ArgAction::SetTrue)]
     pub auto: bool,
 
-    #[arg(short, long, value_name = "INPUT_PATH")]
+    #[arg(short, long, value_name = "INPUT_FILE")]
     pub input_file: PathBuf,
 
-    #[arg(short, long, value_name = "OUTPUT_PATH")]
+    #[arg(short, long, value_name = "OUTPUT_FILE")]
     pub output_file: Option<PathBuf>,
 }
 
