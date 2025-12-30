@@ -1,6 +1,5 @@
-use clap::{Args, Parser, Subcommand, ValueEnum};
+use clap::{Args, Parser, Subcommand};
 use std::path::PathBuf;
-use strum::EnumIter;
 
 #[derive(Parser, Clone, Debug, PartialEq, Eq)]
 #[command(
@@ -14,34 +13,42 @@ pub struct Cli {
     #[command(subcommand)]
     pub command: Commands,
 
-    /// Enable verbose logging (sets log level to Debug).
+    /// Path to a custom TOML configuration file for keys.
+    #[arg(long, global = true)]
+    pub config: Option<PathBuf>,
+
+    /// Enable verbose logging.
     #[arg(short, long, global = true)]
     pub verbose: bool,
 }
 
 #[derive(Subcommand, Clone, Debug, PartialEq, Eq)]
 pub enum Commands {
-    /// Encrypt a single file
     Encrypt(EncryptArgs),
-    /// Decrypt a single file
     Decrypt(DecryptArgs),
+
+    /// Generate a default configuration file.
+    InitConfig(InitConfigArgs),
+}
+
+#[derive(Args, Clone, Debug, PartialEq, Eq)]
+pub struct InitConfigArgs {
+    /// Output path for the generated config file.
+    #[arg(short, long, default_value = "config.toml")]
+    pub output: PathBuf,
 }
 
 #[derive(Args, Clone, Debug, PartialEq, Eq)]
 pub struct EncryptArgs {
-    // If --key is provided, file_type is optional.
     #[arg(short, long, value_name = "FILE_TYPE", required_unless_present = "key")]
-    pub file_type: Option<FileType>,
+    pub file_type: Option<String>,
 
-    // If --key is provided, game_name is optional.
     #[arg(short, long, value_name = "GAME_NAME", required_unless_present = "key")]
-    pub game_name: Option<GameName>,
+    pub game_name: Option<String>,
 
-    /// Custom Hex Key (32 bytes / 64 hex characters).
     #[arg(long, value_name = "HEX_KEY")]
     pub key: Option<String>,
 
-    /// Custom Hex IV (16 bytes / 32 hex characters).
     #[arg(long, value_name = "HEX_IV")]
     pub iv: Option<String>,
 
@@ -54,31 +61,19 @@ pub struct EncryptArgs {
 
 #[derive(Args, Clone, Debug, PartialEq, Eq)]
 pub struct DecryptArgs {
-    #[arg(
-        short,
-        long,
-        value_name = "FILE_TYPE",
-        required_unless_present_any = ["auto", "key"]
-    )]
-    pub file_type: Option<FileType>,
+    #[arg(short, long, value_name = "FILE_TYPE", required_unless_present_any = ["auto", "key"])]
+    pub file_type: Option<String>,
 
-    #[arg(
-        short,
-        long,
-        value_name = "GAME_NAME",
-        required_unless_present_any = ["auto", "key"]
-    )]
-    pub game_name: Option<GameName>,
+    #[arg(short, long, value_name = "GAME_NAME", required_unless_present_any = ["auto", "key"])]
+    pub game_name: Option<String>,
 
-    /// Custom Hex Key (32 bytes / 64 hex characters).
     #[arg(long, value_name = "HEX_KEY")]
     pub key: Option<String>,
 
-    /// Custom Hex IV (16 bytes / 32 hex characters).
     #[arg(long, value_name = "HEX_IV")]
     pub iv: Option<String>,
 
-    #[arg(short,long, action = clap::ArgAction::SetTrue)]
+    #[arg(short, long, action = clap::ArgAction::SetTrue)]
     pub auto: bool,
 
     #[arg(short, long, value_name = "INPUT_FILE")]
@@ -86,25 +81,4 @@ pub struct DecryptArgs {
 
     #[arg(short, long, value_name = "OUTPUT_FILE")]
     pub output_file: Option<PathBuf>,
-}
-
-#[derive(ValueEnum, EnumIter, Clone, Copy, Debug, PartialEq, Eq)]
-#[clap(rename_all = "lower")]
-pub enum FileType {
-    Native,
-    Save,
-    Downloaded,
-}
-
-#[derive(ValueEnum, EnumIter, Clone, Copy, Debug, PartialEq, Eq)]
-#[clap(rename_all = "lower")]
-pub enum GameName {
-    Classic,
-    Rio,
-    Seasons,
-    Space,
-    Friends,
-    Starwars,
-    Starwarsii,
-    Stella,
 }

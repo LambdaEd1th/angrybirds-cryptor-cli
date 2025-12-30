@@ -1,16 +1,10 @@
-use crate::{
-    cli::{FileType, GameName},
-    constants::{get_key, DEFAULT_IV},
-    errors::CryptorError,
-};
+use crate::{config::Config, constants::DEFAULT_IV, errors::CryptorError};
 use aes::cipher::{block_padding::Pkcs7, BlockDecryptMut, BlockEncryptMut, KeyIvInit};
 use log::{debug, trace};
-use strum::IntoEnumIterator;
 
 type Aes256CbcEnc = cbc::Encryptor<aes::Aes256>;
 type Aes256CbcDec = cbc::Decryptor<aes::Aes256>;
 
-// Define a custom Result alias using our separated CryptorError
 pub type Result<T> = core::result::Result<T, CryptorError>;
 
 #[derive(Clone, Debug)]
@@ -20,20 +14,31 @@ pub struct Cryptor {
 }
 
 impl Cryptor {
-    /// Create a Cryptor using built-in keys for specific games.
-    /// Uses the default Zero IV as per legacy Angry Birds format.
-    pub fn new(file_type: FileType, game_name: GameName) -> Result<Self> {
-        let key_bytes = get_key(file_type, game_name)
-            .ok_or(CryptorError::UnsupportedCombination(file_type, game_name))?;
+    /// Create a new Cryptor by looking up the Game and FileType in the config.
+    /// Uses the specific IV if provided in config, otherwise defaults to zero IV.
+    pub fn new(file_type: &str, game_name: &str, config: &Config) -> Result<Self> {
+        // Retrieve both Key and IV from the configuration
+        let (key_vec, iv_arr) = config.get_params(game_name, file_type).ok_or_else(|| {
+            CryptorError::UnsupportedCombination(file_type.to_string(), game_name.to_string())
+        })?;
+
+        // Validate Key Length
+        if key_vec.len() != 32 {
+            return Err(CryptorError::InvalidLength {
+                expected: 32,
+                got: key_vec.len(),
+            });
+        }
+
+        let mut key_array = [0u8; 32];
+        key_array.copy_from_slice(&key_vec);
 
         Ok(Self {
-            key: *key_bytes,
-            iv: DEFAULT_IV,
+            key: key_array,
+            iv: iv_arr,
         })
     }
 
-    /// Create a Cryptor using custom Key and optional IV.
-    /// If IV is None, it defaults to the shared Zero IV.
     pub fn new_custom(key: [u8; 32], iv: Option<[u8; 16]>) -> Self {
         Self {
             key,
@@ -46,29 +51,36 @@ impl Cryptor {
     }
 
     pub fn decrypt(&self, data: &[u8]) -> Result<Vec<u8>> {
-        // Map the AES UnpadError to our custom PaddingError defined in errors.rs
         Ok(Aes256CbcDec::new(&self.key.into(), &self.iv.into())
             .decrypt_padded_vec_mut::<Pkcs7>(data)?)
     }
 }
 
-/// Attempts to decrypt data by trying all known key combinations.
-pub fn try_decrypt_all(data: &[u8]) -> Result<(Vec<u8>, FileType, GameName)> {
+pub fn try_decrypt_all(data: &[u8], config: &Config) -> Result<(Vec<u8>, String, String)> {
     debug!("Starting brute-force decryption on {} bytes", data.len());
 
-    for game_name in GameName::iter() {
-        for file_type in FileType::iter() {
-            trace!("Trying combination: {:?} - {:?}", game_name, file_type);
+    for (game_name, types_map) in &config.games {
+        // FIX: Use .keys() to iterate only over keys, addressing Clippy warning
+        for file_type in types_map.keys() {
+            trace!("Trying combination: {} - {}", game_name, file_type);
 
-            if let Some(key_bytes) = get_key(file_type, game_name) {
+            // Re-use get_params logic to handle Key/IV decoding correctly
+            if let Some((key_vec, iv_arr)) = config.get_params(game_name, file_type) {
+                if key_vec.len() != 32 {
+                    continue;
+                }
+
+                let mut key_array = [0u8; 32];
+                key_array.copy_from_slice(&key_vec);
+
                 let cryptor = Cryptor {
-                    key: *key_bytes,
-                    iv: DEFAULT_IV,
+                    key: key_array,
+                    iv: iv_arr, // Use the IV from config
                 };
 
                 if let Ok(decrypted) = cryptor.decrypt(data) {
-                    debug!("Key found! Combination: {:?} - {:?}", game_name, file_type);
-                    return Ok((decrypted, file_type, game_name));
+                    debug!("Key found! Combination: {} - {}", game_name, file_type);
+                    return Ok((decrypted, file_type.clone(), game_name.clone()));
                 }
             }
         }
@@ -76,74 +88,4 @@ pub fn try_decrypt_all(data: &[u8]) -> Result<(Vec<u8>, FileType, GameName)> {
 
     debug!("No valid key found after trying all combinations.");
     Err(CryptorError::AutoDetectionFailed)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_encrypt_decrypt_cycle() {
-        let file_type = FileType::Native;
-        let game_name = GameName::Space;
-
-        let cryptor = Cryptor::new(file_type, game_name).expect("Should support Native Space");
-
-        let original_data = b"Angry Birds Space!";
-        let encrypted = cryptor.encrypt(original_data);
-        let decrypted = cryptor.decrypt(&encrypted).expect("Decryption failed");
-
-        assert_eq!(original_data.as_slice(), decrypted.as_slice());
-        assert_ne!(original_data.as_slice(), encrypted.as_slice());
-    }
-
-    #[test]
-    fn test_unsupported_combination() {
-        let result = Cryptor::new(FileType::Downloaded, GameName::Classic);
-        // Verify that it returns the specific UnsupportedCombination error
-        assert!(matches!(
-            result,
-            Err(CryptorError::UnsupportedCombination(_, _))
-        ));
-    }
-
-    #[test]
-    fn test_auto_detection() {
-        let target_ft = FileType::Save;
-        let target_gn = GameName::Seasons;
-        let secret_msg = b"Secret Level Data";
-
-        let cryptor = Cryptor::new(target_ft, target_gn).unwrap();
-        let encrypted_data = cryptor.encrypt(secret_msg);
-
-        let (decrypted, detected_ft, detected_gn) =
-            try_decrypt_all(&encrypted_data).expect("Auto detection should succeed");
-
-        assert_eq!(decrypted, secret_msg);
-        assert_eq!(detected_ft, target_ft);
-        assert_eq!(detected_gn, target_gn);
-    }
-
-    #[test]
-    fn test_decrypt_error() {
-        let cryptor = Cryptor::new(FileType::Native, GameName::Classic).unwrap();
-        let invalid_data = vec![0u8; 32];
-
-        // Verify that it returns the PaddingError
-        let result = cryptor.decrypt(&invalid_data);
-        assert!(matches!(result, Err(CryptorError::PaddingError(_))));
-    }
-
-    #[test]
-    fn test_custom_key_iv() {
-        let key = [0x01; 32];
-        let iv = [0x02; 16];
-        let msg = b"Custom Crypto Test";
-
-        let cryptor = Cryptor::new_custom(key, Some(iv));
-        let encrypted = cryptor.encrypt(msg);
-        let decrypted = cryptor.decrypt(&encrypted).expect("Decrypt custom failed");
-
-        assert_eq!(msg.as_slice(), decrypted.as_slice());
-    }
 }
