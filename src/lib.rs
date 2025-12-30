@@ -7,4 +7,4 @@ pub mod errors;
 // Re-export commonly used types
 pub use cli::{Cli, Commands, FileType, GameName};
 pub use crypto::Cryptor;
-pub use errors::CryptorError; // 2. Re-export the error type
+pub use errors::CryptorError;
