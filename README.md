@@ -79,7 +79,7 @@ angrybirds-cryptor-cli decrypt \
   --game classic \
   --category native \
   --input levels.lua \
-  --output-file levels.dec.lua
+  --output levels.dec.lua
 
 ```
 
