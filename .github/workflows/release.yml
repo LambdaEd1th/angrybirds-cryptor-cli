@@ -10,7 +10,7 @@ on:
 
 env:
   # The binary name as defined in Cargo.toml
-  BIN_NAME: angrybirds_cryptor_cli
+  BIN_NAME: angrybirds-cryptor-cli
 
 jobs:
   build-and-upload:
