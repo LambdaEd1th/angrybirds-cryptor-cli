@@ -31,7 +31,7 @@ pub struct Cli {
 pub enum Commands {
     Encrypt(EncryptArgs),
     Decrypt(DecryptArgs),
-    
+
     /// Generate a default configuration file.
     InitConfig(InitConfigArgs),
 }

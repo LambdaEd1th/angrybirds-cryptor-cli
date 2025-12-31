@@ -89,3 +89,70 @@ pub fn try_decrypt_all(data: &[u8], config: &Config) -> Result<(Vec<u8>, String,
     debug!("No valid key found after trying all combinations.");
     Err(CryptorError::AutoDetectionFailed)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn create_test_config() -> Config {
+        let toml_data = r#"
+            [games.game_a]
+            type_1 = "11111111111111111111111111111111"
+            
+            [games.game_b]
+            # Key: 32 bytes of '2', IV: 16 bytes of '3'
+            type_2 = { key = "3232323232323232323232323232323232323232323232323232323232323232", iv = "33333333333333333333333333333333" }
+        "#;
+        toml::from_str(toml_data).unwrap()
+    }
+
+    #[test]
+    fn test_encrypt_decrypt_roundtrip() {
+        let config = create_test_config();
+        let original_data = b"AngryBirdsSecretData";
+
+        let cryptor_a = Cryptor::new("type_1", "game_a", &config).unwrap();
+        let encrypted_a = cryptor_a.encrypt(original_data);
+        let decrypted_a = cryptor_a.decrypt(&encrypted_a).unwrap();
+        assert_eq!(decrypted_a, original_data);
+
+        let cryptor_b = Cryptor::new("type_2", "game_b", &config).unwrap();
+        let encrypted_b = cryptor_b.encrypt(original_data);
+
+        assert_ne!(encrypted_a, encrypted_b);
+
+        let decrypted_b = cryptor_b.decrypt(&encrypted_b).unwrap();
+        assert_eq!(decrypted_b, original_data);
+    }
+
+    #[test]
+    fn test_try_decrypt_all_auto_detection() {
+        let config = create_test_config();
+        let original_data = b"AutoDetectMe";
+
+        let cryptor = Cryptor::new("type_2", "game_b", &config).unwrap();
+        let encrypted = cryptor.encrypt(original_data);
+
+        let (decrypted, file_type, game_name) =
+            try_decrypt_all(&encrypted, &config).expect("Auto detection failed");
+
+        assert_eq!(decrypted, original_data);
+        assert_eq!(game_name, "game_b");
+        assert_eq!(file_type, "type_2");
+    }
+
+    #[test]
+    fn test_invalid_padding_fails() {
+        let config = create_test_config();
+        let garbage_data = vec![0u8; 32];
+
+        let cryptor = Cryptor::new("type_1", "game_a", &config).unwrap();
+        let result = cryptor.decrypt(&garbage_data);
+
+        assert!(result.is_err());
+        match result {
+            Err(CryptorError::PaddingError(_)) => (),
+            _ => panic!("Expected PaddingError"),
+        }
+    }
+}
