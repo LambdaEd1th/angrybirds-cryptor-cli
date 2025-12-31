@@ -67,17 +67,17 @@ fn main() -> Result<()> {
                     } else if cmd_args.auto {
                         // Auto-detection now tries all configured Key+IV pairs
                         let (decrypted, ft, gn) = crypto::try_decrypt_all(data, &cfg)?;
-                        info!("Auto-detected: Game='{}', Type='{}'", gn, ft);
+                        info!("Auto-detected: Game='{}', Category='{}'", gn, ft);
                         Ok(decrypted)
                     } else {
                         let category = cmd_args.category.as_deref().ok_or_else(|| {
                             anyhow!("Category argument is required for manual decryption.")
                         })?;
-                        let game_name = cmd_args.game.as_deref().ok_or_else(|| {
+                        let game = cmd_args.game.as_deref().ok_or_else(|| {
                             anyhow!("Game name argument is required for manual decryption.")
                         })?;
 
-                        let cryptor = crypto::Cryptor::new(category, game_name, &cfg)?;
+                        let cryptor = crypto::Cryptor::new(category, game, &cfg)?;
                         Ok(cryptor.decrypt(data)?)
                     }
                 },

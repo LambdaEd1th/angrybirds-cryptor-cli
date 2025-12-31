@@ -69,8 +69,8 @@ impl Config {
                 for (game, categories) in user_config.games {
                     let game_lower = game.to_lowercase();
                     let entry = config.games.entry(game_lower).or_insert_with(HashMap::new);
-                    for (ft, crypto_entry) in categories {
-                        entry.insert(ft.to_lowercase(), crypto_entry);
+                    for (category, crypto_entry) in categories {
+                        entry.insert(category.to_lowercase(), crypto_entry);
                     }
                 }
             }

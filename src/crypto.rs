@@ -152,11 +152,11 @@ mod tests {
         let result = try_decrypt_all(&encrypted, &config);
 
         assert!(result.is_ok());
-        let (decrypted, category, game_name) = result.unwrap();
+        let (decrypted, category, game) = result.unwrap();
 
         assert_eq!(decrypted, PLAINTEXT);
-        assert_eq!(game_name, "test_game");
-        assert_eq!(category, "category");
+        assert_eq!(game, "test_game");
+        assert_eq!(category, "test_category");
     }
 
     #[test]
