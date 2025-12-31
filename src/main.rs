@@ -38,7 +38,7 @@ fn main() -> Result<()> {
                 let category = cmd_args.category.as_deref().ok_or_else(|| {
                     anyhow!("Category argument is required when no custom key is provided.")
                 })?;
-                let game_name = cmd_args.game_name.as_deref().ok_or_else(|| {
+                let game_name = cmd_args.game.as_deref().ok_or_else(|| {
                     anyhow!("Game name argument is required when no custom key is provided.")
                 })?;
 
@@ -46,8 +46,8 @@ fn main() -> Result<()> {
             };
 
             process_files(
-                &cmd_args.input_file,
-                cmd_args.output_file,
+                &cmd_args.input,
+                cmd_args.output,
                 constants::SUFFIX_ENCRYPTED,
                 |data| Ok(cryptor.encrypt(data)),
             )?;
@@ -57,8 +57,8 @@ fn main() -> Result<()> {
             info!("Mode: Decrypt");
 
             process_files(
-                &cmd_args.input_file,
-                cmd_args.output_file,
+                &cmd_args.input,
+                cmd_args.output,
                 constants::SUFFIX_DECRYPTED,
                 |data| {
                     if let Some(hex_key) = &cmd_args.key {
@@ -73,7 +73,7 @@ fn main() -> Result<()> {
                         let category = cmd_args.category.as_deref().ok_or_else(|| {
                             anyhow!("Category argument is required for manual decryption.")
                         })?;
-                        let game_name = cmd_args.game_name.as_deref().ok_or_else(|| {
+                        let game_name = cmd_args.game.as_deref().ok_or_else(|| {
                             anyhow!("Game name argument is required for manual decryption.")
                         })?;
 

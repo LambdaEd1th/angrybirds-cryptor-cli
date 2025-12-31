@@ -67,7 +67,7 @@ angrybirds-cryptor-cli <COMMAND> [OPTIONS]
 If you don't know the specific game or file category, use the `--auto` flag. The tool will try all known key combinations.
 
 ```bash
-angrybirds-cryptor-cli decrypt --input-file highscores.lua --auto
+angrybirds-cryptor-cli decrypt --input highscores.lua --auto
 
 ```
 
@@ -76,9 +76,9 @@ Manually specify the game and file category.
 
 ```bash
 angrybirds-cryptor-cli decrypt \
-  --game-name classic \
+  --game classic \
   --category native \
-  --input-file levels.lua \
+  --input levels.lua \
   --output-file levels.dec.lua
 
 ```
@@ -90,7 +90,7 @@ Use a specific Hex Key and IV (Initialization Vector).
 angrybirds-cryptor-cli decrypt \
   --key "55534361505170413454534e56784d49317639534b39554330795a75416e6232" \
   --iv "00000000000000000000000000000000" \
-  --input-file data.enc
+  --input data.enc
 
 ```
 
@@ -100,10 +100,10 @@ To encrypt a modified file back to the game format:
 
 ```bash
 angrybirds-cryptor-cli encrypt \
-  --game-name seasons \
+  --game seasons \
   --category save \
-  --input-file progress.json \
-  --output-file progress.dat
+  --input settings.lua \
+  --output settings.dec.lua
 
 ```
 
@@ -131,10 +131,10 @@ angrybirds-cryptor-cli decrypt --config my_config.toml ...
 
 | Option | Short | Description |
 | --- | --- | --- |
-| `--game-name` | `-g` | Target game (e.g., `classic`, `rio`, `space`). |
+| `--game` | `-g` | Target game (e.g., `classic`, `rio`, `space`). |
 | `--category` | `-c` | File category (`native`, `save`, `downloaded`). |
-| `--input-file` | `-i` | Path to the source file. |
-| `--output-file` | `-o` | (Optional) Path to the destination file. |
+| `--input` | `-i` | Path to the source file. |
+| `--output` | `-o` | (Optional) Path to the destination file. |
 | `--key` |  | 32-byte Key in Hex string format. |
 | `--iv` |  | 16-byte IV in Hex string format. |
 | `--auto` | `-a` | (Decrypt only) Attempt to auto-detect the key. |

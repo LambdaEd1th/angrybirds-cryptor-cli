@@ -49,7 +49,7 @@ pub struct EncryptArgs {
     pub category: Option<String>,
 
     #[arg(short, long, value_name = "GAME_NAME", required_unless_present = "key")]
-    pub game_name: Option<String>,
+    pub game: Option<String>,
 
     #[arg(long, value_name = "HEX_KEY")]
     pub key: Option<String>,
@@ -58,10 +58,10 @@ pub struct EncryptArgs {
     pub iv: Option<String>,
 
     #[arg(short, long, value_name = "INPUT_FILE")]
-    pub input_file: PathBuf,
+    pub input: PathBuf,
 
     #[arg(short, long, value_name = "OUTPUT_FILE")]
-    pub output_file: Option<PathBuf>,
+    pub output: Option<PathBuf>,
 }
 
 #[derive(Args, Clone, Debug, PartialEq, Eq)]
@@ -70,7 +70,7 @@ pub struct DecryptArgs {
     pub category: Option<String>,
 
     #[arg(short, long, value_name = "GAME_NAME", required_unless_present_any = ["auto", "key"])]
-    pub game_name: Option<String>,
+    pub game: Option<String>,
 
     #[arg(long, value_name = "HEX_KEY")]
     pub key: Option<String>,
@@ -82,8 +82,8 @@ pub struct DecryptArgs {
     pub auto: bool,
 
     #[arg(short, long, value_name = "INPUT_FILE")]
-    pub input_file: PathBuf,
+    pub input: PathBuf,
 
     #[arg(short, long, value_name = "OUTPUT_FILE")]
-    pub output_file: Option<PathBuf>,
+    pub output: Option<PathBuf>,
 }
