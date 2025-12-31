@@ -45,8 +45,8 @@ pub struct InitConfigArgs {
 
 #[derive(Args, Clone, Debug, PartialEq, Eq)]
 pub struct EncryptArgs {
-    #[arg(short, long, value_name = "FILE_TYPE", required_unless_present = "key")]
-    pub file_type: Option<String>,
+    #[arg(short, long, value_name = "CATEGORY", required_unless_present = "key")]
+    pub category: Option<String>,
 
     #[arg(short, long, value_name = "GAME_NAME", required_unless_present = "key")]
     pub game_name: Option<String>,
@@ -66,8 +66,8 @@ pub struct EncryptArgs {
 
 #[derive(Args, Clone, Debug, PartialEq, Eq)]
 pub struct DecryptArgs {
-    #[arg(short, long, value_name = "FILE_TYPE", required_unless_present_any = ["auto", "key"])]
-    pub file_type: Option<String>,
+    #[arg(short, long, value_name = "CATEGORY", required_unless_present_any = ["auto", "key"])]
+    pub category: Option<String>,
 
     #[arg(short, long, value_name = "GAME_NAME", required_unless_present_any = ["auto", "key"])]
     pub game_name: Option<String>,

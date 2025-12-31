@@ -35,14 +35,14 @@ fn main() -> Result<()> {
                 create_custom_cryptor(&hex_key, cmd_args.iv.as_deref())?
             } else {
                 debug!("Using configuration (Key & IV).");
-                let file_type = cmd_args.file_type.as_deref().ok_or_else(|| {
-                    anyhow!("File type argument is required when no custom key is provided.")
+                let category = cmd_args.category.as_deref().ok_or_else(|| {
+                    anyhow!("Category argument is required when no custom key is provided.")
                 })?;
                 let game_name = cmd_args.game_name.as_deref().ok_or_else(|| {
                     anyhow!("Game name argument is required when no custom key is provided.")
                 })?;
 
-                crypto::Cryptor::new(file_type, game_name, &cfg)?
+                crypto::Cryptor::new(category, game_name, &cfg)?
             };
 
             process_files(
@@ -70,14 +70,14 @@ fn main() -> Result<()> {
                         info!("Auto-detected: Game='{}', Type='{}'", gn, ft);
                         Ok(decrypted)
                     } else {
-                        let file_type = cmd_args.file_type.as_deref().ok_or_else(|| {
-                            anyhow!("File type argument is required for manual decryption.")
+                        let category = cmd_args.category.as_deref().ok_or_else(|| {
+                            anyhow!("Category argument is required for manual decryption.")
                         })?;
                         let game_name = cmd_args.game_name.as_deref().ok_or_else(|| {
                             anyhow!("Game name argument is required for manual decryption.")
                         })?;
 
-                        let cryptor = crypto::Cryptor::new(file_type, game_name, &cfg)?;
+                        let cryptor = crypto::Cryptor::new(category, game_name, &cfg)?;
                         Ok(cryptor.decrypt(data)?)
                     }
                 },

@@ -14,12 +14,12 @@ pub struct Cryptor {
 }
 
 impl Cryptor {
-    /// Create a new Cryptor by looking up the Game and FileType in the config.
+    /// Create a new Cryptor by looking up the Game and Category in the config.
     /// Uses the specific IV if provided in config, otherwise defaults to zero IV.
-    pub fn new(file_type: &str, game_name: &str, config: &Config) -> Result<Self> {
+    pub fn new(category: &str, game_name: &str, config: &Config) -> Result<Self> {
         // Retrieve both Key and IV from the configuration
-        let (key_vec, iv_arr) = config.get_params(game_name, file_type).ok_or_else(|| {
-            CryptorError::UnsupportedCombination(file_type.to_string(), game_name.to_string())
+        let (key_vec, iv_arr) = config.get_params(game_name, category).ok_or_else(|| {
+            CryptorError::UnsupportedCombination(category.to_string(), game_name.to_string())
         })?;
 
         // Validate Key Length
@@ -59,13 +59,12 @@ impl Cryptor {
 pub fn try_decrypt_all(data: &[u8], config: &Config) -> Result<(Vec<u8>, String, String)> {
     debug!("Starting brute-force decryption on {} bytes", data.len());
 
-    for (game_name, types_map) in &config.games {
-        // FIX: Use .keys() to iterate only over keys, addressing Clippy warning
-        for file_type in types_map.keys() {
-            trace!("Trying combination: {} - {}", game_name, file_type);
+    for (game_name, categories_map) in &config.games {
+        for category in categories_map.keys() {
+            trace!("Trying combination: {} - {}", game_name, category);
 
             // Re-use get_params logic to handle Key/IV decoding correctly
-            if let Some((key_vec, iv_arr)) = config.get_params(game_name, file_type) {
+            if let Some((key_vec, iv_arr)) = config.get_params(game_name, category) {
                 if key_vec.len() != 32 {
                     continue;
                 }
@@ -75,12 +74,12 @@ pub fn try_decrypt_all(data: &[u8], config: &Config) -> Result<(Vec<u8>, String,
 
                 let cryptor = Cryptor {
                     key: key_array,
-                    iv: iv_arr, // Use the IV from config
+                    iv: iv_arr,
                 };
 
                 if let Ok(decrypted) = cryptor.decrypt(data) {
-                    debug!("Key found! Combination: {} - {}", game_name, file_type);
-                    return Ok((decrypted, file_type.clone(), game_name.clone()));
+                    debug!("Key found! Combination: {} - {}", game_name, category);
+                    return Ok((decrypted, category.clone(), game_name.clone()));
                 }
             }
         }
@@ -139,11 +138,11 @@ mod tests {
     #[test]
     fn test_try_decrypt_all_success() {
         let mut games = HashMap::new();
-        let mut types = HashMap::new();
+        let mut categories = HashMap::new();
 
         let key_hex = hex::encode(TEST_KEY);
-        types.insert("test_type".to_string(), CryptoEntry::KeyOnly(key_hex));
-        games.insert("test_game".to_string(), types);
+        categories.insert("test_category".to_string(), CryptoEntry::KeyOnly(key_hex));
+        games.insert("test_game".to_string(), categories);
 
         let config = Config { games };
 
@@ -153,21 +152,21 @@ mod tests {
         let result = try_decrypt_all(&encrypted, &config);
 
         assert!(result.is_ok());
-        let (decrypted, file_type, game_name) = result.unwrap();
+        let (decrypted, category, game_name) = result.unwrap();
 
         assert_eq!(decrypted, PLAINTEXT);
         assert_eq!(game_name, "test_game");
-        assert_eq!(file_type, "test_type");
+        assert_eq!(category, "category");
     }
 
     #[test]
     fn test_try_decrypt_all_failure() {
         let mut games = HashMap::new();
-        let mut types = HashMap::new();
+        let mut categories = HashMap::new();
 
         let wrong_key_hex = hex::encode([0u8; 32]);
-        types.insert("native".to_string(), CryptoEntry::KeyOnly(wrong_key_hex));
-        games.insert("classic".to_string(), types);
+        categories.insert("native".to_string(), CryptoEntry::KeyOnly(wrong_key_hex));
+        games.insert("classic".to_string(), categories);
 
         let config = Config { games };
 

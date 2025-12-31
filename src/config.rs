@@ -7,13 +7,13 @@ use std::path::Path;
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct Config {
-    /// Structure: games -> game_name -> file_type -> CryptoEntry
+    /// Structure: games -> game_name -> category -> CryptoEntry
     pub games: HashMap<String, GameConfig>,
 }
 
 pub type GameConfig = HashMap<String, CryptoEntry>;
 
-/// Represents a configuration entry for a specific file type.
+/// Represents a configuration entry for a specific file category.
 #[derive(Debug, Deserialize, Serialize, Clone)]
 #[serde(untagged)]
 pub enum CryptoEntry {
@@ -25,12 +25,12 @@ pub enum CryptoEntry {
 }
 
 impl Config {
-    pub fn get_params(&self, game_name: &str, file_type: &str) -> Option<(Vec<u8>, [u8; 16])> {
+    pub fn get_params(&self, game_name: &str, category: &str) -> Option<(Vec<u8>, [u8; 16])> {
         let game_key = game_name.to_lowercase();
-        let type_key = file_type.to_lowercase();
+        let category_key = category.to_lowercase();
 
         let game_config = self.games.get(&game_key)?;
-        let entry = game_config.get(&type_key)?;
+        let entry = game_config.get(&category_key)?;
 
         let (key_str, iv_str_opt) = match entry {
             CryptoEntry::KeyOnly(k) => (k, None),
@@ -66,10 +66,10 @@ impl Config {
                     toml::from_str(&content).context("Failed to parse TOML config file")?;
 
                 // Merge user config
-                for (game, types) in user_config.games {
+                for (game, categories) in user_config.games {
                     let game_lower = game.to_lowercase();
                     let entry = config.games.entry(game_lower).or_insert_with(HashMap::new);
-                    for (ft, crypto_entry) in types {
+                    for (ft, crypto_entry) in categories {
                         entry.insert(ft.to_lowercase(), crypto_entry);
                     }
                 }
@@ -94,15 +94,15 @@ impl Default for Config {
         let mut games = HashMap::new();
 
         macro_rules! add_game {
-            ($name:expr, $( $ft:expr => $key:expr ),* ) => {
-                let mut types = HashMap::new();
+            ($name:expr, $( $category:expr => $key:expr ),* ) => {
+                let mut categories = HashMap::new();
                 $(
-                    types.insert(
-                        $ft.to_string(),
+                    categories.insert(
+                        $category.to_string(),
                         CryptoEntry::KeyOnly($key.to_string())
                     );
                 )*
-                games.insert($name.to_string(), types);
+                games.insert($name.to_string(), categories);
             };
         }
 
