@@ -23,7 +23,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "angrybirds_cryptor_cli"
+name = "angrybirds-cryptor-cli"
 version = "0.4.0"
 dependencies = [
  "aes",

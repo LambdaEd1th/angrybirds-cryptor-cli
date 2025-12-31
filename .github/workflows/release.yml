@@ -9,7 +9,7 @@ on:
       - "v*"
 
 env:
-  # TODO: Replace with your actual binary name as defined in Cargo.toml
+  # The binary name as defined in Cargo.toml
   BIN_NAME: angrybirds_cryptor_cli
 
 jobs:
@@ -27,7 +27,6 @@ jobs:
             suffix: ""
 
           # --- Linux AArch64 (ARM64) ---
-          # Uses 'cross' because standard GitHub runners are x86_64
           - os: ubuntu-latest
             target: aarch64-unknown-linux-gnu
             use_cross: true
@@ -40,7 +39,6 @@ jobs:
             suffix: ".exe"
 
           # --- Windows AArch64 (ARM64) ---
-          # Windows ARM64 can be compiled natively on x64 runners via MSVC
           - os: windows-latest
             target: aarch64-pc-windows-msvc
             use_cross: false
@@ -71,7 +69,6 @@ jobs:
         uses: taiki-e/install-action@cross
 
       - name: Build Release Binary
-        # Use bash on all platforms to ensure consistent script syntax
         shell: bash
         run: |
           CMD=cargo
@@ -85,7 +82,6 @@ jobs:
         shell: bash
         run: |
           # 1. Setup variables
-          # The folder name inside the archive: project-version-platform
           RELEASE_NAME="${{ env.BIN_NAME }}-${{ github.ref_name }}-${{ matrix.target }}"
           ARCHIVE_NAME="${RELEASE_NAME}.tar.gz"
 
@@ -99,19 +95,60 @@ jobs:
           fi
 
           # 3. Create a temporary directory for packaging
-          # This ensures the user extracts a directory rather than loose files
           mkdir "$RELEASE_NAME"
 
           # 4. Copy the binary and documentation files
+          echo "Copying binary and docs..."
           cp "$BIN_PATH" "$RELEASE_NAME/"
           if [ -f "README.md" ]; then cp "README.md" "$RELEASE_NAME/"; fi
           if [ -f "LICENSE" ]; then cp "LICENSE" "$RELEASE_NAME/"; fi
 
-          # 5. Create the .tar.gz archive
+          # 5. Copy and Configure Scripts (Bash or PowerShell)
+          # Logic: Check if the target contains 'windows'.
+          # If Windows -> Package .ps1 script
+          # If Other   -> Package .sh script
+          
+          if [[ "${{ matrix.target }}" == *"windows"* ]]; then
+              # --- Windows: Package PowerShell Script ---
+              PS_SRC="scripts/interactive_process.ps1"
+              PS_DEST="$RELEASE_NAME/interactive_process.ps1"
+              
+              if [ -f "$PS_SRC" ]; then
+                  echo "Packaging PowerShell script for Windows..."
+                  cp "$PS_SRC" "$PS_DEST"
+                  
+                  # Modify the $ToolPath in the script to point to the current directory
+                  # Pattern: $ToolPath = "..."  ->  $ToolPath = ".\binary.exe"
+                  # Note: We use 4 backslashes inside sed double quotes to get a single backslash in output
+                  sed "s|\$ToolPath = .*|\$ToolPath = \".\\\\${{ env.BIN_NAME }}.exe\"|" "$PS_DEST" > "$PS_DEST.tmp" && mv "$PS_DEST.tmp" "$PS_DEST"
+              else
+                  echo "Warning: PowerShell script not found at $PS_SRC"
+              fi
+          else
+              # --- Linux/macOS: Package Bash Script ---
+              SH_SRC="scripts/interactive_process.sh"
+              SH_DEST="$RELEASE_NAME/interactive_process.sh"
+              
+              if [ -f "$SH_SRC" ]; then
+                  echo "Packaging Bash script for Unix-like OS..."
+                  cp "$SH_SRC" "$SH_DEST"
+                  
+                  # Modify the TOOL_PATH in the script to point to the current directory
+                  # Pattern: TOOL_PATH="..."  ->  TOOL_PATH="./binary"
+                  sed "s|TOOL_PATH=.*|TOOL_PATH=\"./${{ env.BIN_NAME }}\"|" "$SH_DEST" > "$SH_DEST.tmp" && mv "$SH_DEST.tmp" "$SH_DEST"
+                  
+                  # Ensure the script is executable
+                  chmod +x "$SH_DEST"
+              else
+                  echo "Warning: Bash script not found at $SH_SRC"
+              fi
+          fi
+
+          # 6. Create the .tar.gz archive
           # -c: create, -z: gzip, -v: verbose, -f: file
           tar -czvf "$ARCHIVE_NAME" "$RELEASE_NAME"
 
-          # 6. Set the output for the next step
+          # 7. Set the output for the next step
           echo "asset_path=$ARCHIVE_NAME" >> $GITHUB_OUTPUT
 
       - name: Upload Release Asset
