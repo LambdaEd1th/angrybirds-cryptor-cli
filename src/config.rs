@@ -17,10 +17,10 @@ pub type GameConfig = HashMap<String, CryptoEntry>;
 #[derive(Debug, Deserialize, Serialize, Clone)]
 #[serde(untagged)]
 pub enum CryptoEntry {
-    /// Case 1: Simple string, e.g., native = "KEY"
+    /// Case 1: Simple string, e.g., native = "HEX_STRING"
     KeyOnly(String),
 
-    /// Case 2: Detailed object, e.g., native = { key = "KEY", iv = "IV" }
+    /// Case 2: Detailed object, e.g., native = { key = "HEX_STRING", iv = "HEX_STRING" }
     Detailed { key: String, iv: Option<String> },
 }
 
@@ -37,10 +37,14 @@ impl Config {
             CryptoEntry::Detailed { key, iv } => (key, iv.as_ref()),
         };
 
-        let key_bytes = decode_hex_or_string(key_str);
+        // Use strict hex decoding.
+        // If the key string is not valid hex, this returns an empty vector.
+        // The empty vector will trigger a length validation error in Cryptor::new later.
+        let key_bytes = decode_hex_strict(key_str);
 
         let iv_bytes = if let Some(iv_s) = iv_str_opt {
-            let decoded = decode_hex_or_string(iv_s);
+            let decoded = decode_hex_strict(iv_s);
+            // Validate IV length immediately (must be 16 bytes for AES-256-CBC)
             if decoded.len() == 16 {
                 let mut arr = [0u8; 16];
                 arr.copy_from_slice(&decoded);
@@ -65,7 +69,7 @@ impl Config {
                 let user_config: Config =
                     toml::from_str(&content).context("Failed to parse TOML config file")?;
 
-                // Merge user config
+                // Merge user config into default config
                 for (game, categories) in user_config.games {
                     let game_lower = game.to_lowercase();
                     let entry = config.games.entry(game_lower).or_insert_with(HashMap::new);
@@ -80,13 +84,11 @@ impl Config {
     }
 }
 
-fn decode_hex_or_string(s: &str) -> Vec<u8> {
-    if (s.len() == 32 || s.len() == 64) && s.chars().all(|c| c.is_ascii_hexdigit()) {
-        if let Ok(bytes) = hex::decode(s) {
-            return bytes;
-        }
-    }
-    s.as_bytes().to_vec()
+/// Helper function to decode hex strings strictly.
+/// Returns an empty Vec if decoding fails, ensuring we don't accidentally interpret
+/// malformed hex as raw bytes.
+fn decode_hex_strict(s: &str) -> Vec<u8> {
+    hex::decode(s).unwrap_or_default()
 }
 
 impl Default for Config {
@@ -99,13 +101,18 @@ impl Default for Config {
                 $(
                     categories.insert(
                         $category.to_string(),
-                        CryptoEntry::KeyOnly($key.to_string())
+                        // Automatically encode the hardcoded ASCII keys into Hex strings.
+                        // This ensures that the Config struct always holds Hex strings,
+                        // consistent with the new strict decoding logic.
+                        CryptoEntry::KeyOnly(hex::encode($key))
                     );
                 )*
                 games.insert($name.to_string(), categories);
             };
         }
 
+        // Define default keys for known games.
+        // These ASCII keys will be converted to Hex by the macro above.
         add_game!("classic",
             "native" => "USCaPQpA4TSNVxMI1v9SK9UC0yZuAnb2",
             "save"   => "44iUY5aTrlaYoet9lapRlaK1Ehlec5i0"

@@ -7,7 +7,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use angrybirds_cryptor_cli::{cli, config, constants, crypto};
+use angrybirds_cryptor_cli::{cli, config, crypto};
 
 fn main() -> Result<()> {
     let cli = cli::Cli::parse();
@@ -38,7 +38,7 @@ fn main() -> Result<()> {
             process_files(
                 &cmd_args.input,
                 cmd_args.output,
-                constants::SUFFIX_ENCRYPTED,
+                "_encrypted",
                 |data| Ok(cryptor.encrypt(data)),
             )?;
         }
@@ -49,7 +49,7 @@ fn main() -> Result<()> {
             process_files(
                 &cmd_args.input,
                 cmd_args.output,
-                constants::SUFFIX_DECRYPTED,
+                "_decrypted",
                 |data| {
                     if let Some(hex_key) = &cmd_args.key {
                         let cryptor = create_custom_cryptor(hex_key, cmd_args.iv.as_deref())?;
