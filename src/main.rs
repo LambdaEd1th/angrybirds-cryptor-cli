@@ -35,43 +35,35 @@ fn main() -> Result<()> {
                 crypto::Cryptor::new(category, game_name, &cfg)?
             };
 
-            process_files(
-                &cmd_args.input,
-                cmd_args.output,
-                "_encrypted",
-                |data| Ok(cryptor.encrypt(data)),
-            )?;
+            process_files(&cmd_args.input, cmd_args.output, "_encrypted", |data| {
+                Ok(cryptor.encrypt(data))
+            })?;
         }
 
         cli::Commands::Decrypt(cmd_args) => {
             info!("Mode: Decrypt");
 
-            process_files(
-                &cmd_args.input,
-                cmd_args.output,
-                "_decrypted",
-                |data| {
-                    if let Some(hex_key) = &cmd_args.key {
-                        let cryptor = create_custom_cryptor(hex_key, cmd_args.iv.as_deref())?;
-                        Ok(cryptor.decrypt(data)?)
-                    } else if cmd_args.auto {
-                        // Auto-detection now tries all configured Key+IV pairs
-                        let (decrypted, ft, gn) = crypto::try_decrypt_all(data, &cfg)?;
-                        info!("Auto-detected: Game='{}', Category='{}'", gn, ft);
-                        Ok(decrypted)
-                    } else {
-                        let category = cmd_args.category.as_deref().ok_or_else(|| {
-                            anyhow!("Category argument is required for manual decryption.")
-                        })?;
-                        let game = cmd_args.game.as_deref().ok_or_else(|| {
-                            anyhow!("Game name argument is required for manual decryption.")
-                        })?;
+            process_files(&cmd_args.input, cmd_args.output, "_decrypted", |data| {
+                if let Some(hex_key) = &cmd_args.key {
+                    let cryptor = create_custom_cryptor(hex_key, cmd_args.iv.as_deref())?;
+                    Ok(cryptor.decrypt(data)?)
+                } else if cmd_args.auto {
+                    // Auto-detection now tries all configured Key+IV pairs
+                    let (decrypted, ft, gn) = crypto::try_decrypt_all(data, &cfg)?;
+                    info!("Auto-detected: Game='{}', Category='{}'", gn, ft);
+                    Ok(decrypted)
+                } else {
+                    let category = cmd_args.category.as_deref().ok_or_else(|| {
+                        anyhow!("Category argument is required for manual decryption.")
+                    })?;
+                    let game = cmd_args.game.as_deref().ok_or_else(|| {
+                        anyhow!("Game name argument is required for manual decryption.")
+                    })?;
 
-                        let cryptor = crypto::Cryptor::new(category, game, &cfg)?;
-                        Ok(cryptor.decrypt(data)?)
-                    }
-                },
-            )?;
+                    let cryptor = crypto::Cryptor::new(category, game, &cfg)?;
+                    Ok(cryptor.decrypt(data)?)
+                }
+            })?;
         }
 
         cli::Commands::InitConfig(cmd_args) => {
