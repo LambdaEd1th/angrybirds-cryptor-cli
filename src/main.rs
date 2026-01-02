@@ -1,7 +1,6 @@
 use anyhow::{anyhow, Context, Result};
 use clap::Parser;
-use env_logger::Builder;
-use log::{debug, info, LevelFilter};
+use log::{debug, info};
 use std::{
     fs::{self, File},
     io::Write,
@@ -12,7 +11,7 @@ use angrybirds_cryptor_cli::{cli, config, constants, crypto};
 
 fn main() -> Result<()> {
     let cli = cli::Cli::parse();
-    init_logger(&cli);
+    cli.init_logger();
 
     // Load config (defaults + user overrides)
     let cfg = config::Config::load_or_default(cli.config.as_deref())?;
@@ -172,24 +171,4 @@ fn generate_suffixed_path(path: &Path, suffix: &str) -> PathBuf {
         format!("{}{}.{}", stem, suffix, ext)
     };
     path.with_file_name(new_name)
-}
-
-/// Initializes the logging system based on CLI flags or environment variables.
-fn init_logger(cli: &cli::Cli) {
-    let mut builder = Builder::from_default_env();
-
-    if cli.verbose {
-        // -v: Show Debug information
-        builder.filter_level(LevelFilter::Debug);
-    } else if cli.quiet {
-        // -q: Only show Errors, suppress Info
-        builder.filter_level(LevelFilter::Error);
-    } else {
-        // Default: If RUST_LOG env var is not set, default to Info
-        if std::env::var("RUST_LOG").is_err() {
-            builder.filter_level(LevelFilter::Info);
-        }
-    }
-
-    builder.init();
 }

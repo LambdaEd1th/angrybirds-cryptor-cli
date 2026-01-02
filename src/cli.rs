@@ -1,4 +1,6 @@
 use clap::{Args, Parser, Subcommand};
+use env_logger::Builder;
+use log::LevelFilter;
 use std::path::PathBuf;
 
 #[derive(Parser, Clone, Debug, PartialEq, Eq)]
@@ -25,6 +27,28 @@ pub struct Cli {
     /// Conflicts with --verbose.
     #[arg(short, long, global = true, conflicts_with = "verbose")]
     pub quiet: bool,
+}
+
+impl Cli {
+    /// Initializes the logging system based on CLI flags or environment variables.
+    pub fn init_logger(&self) {
+        let mut builder = Builder::from_default_env();
+
+        if self.verbose {
+            // -v: Show Debug information
+            builder.filter_level(LevelFilter::Debug);
+        } else if self.quiet {
+            // -q: Only show Errors, suppress Info
+            builder.filter_level(LevelFilter::Error);
+        } else {
+            // Default: If RUST_LOG env var is not set, default to Info
+            if std::env::var("RUST_LOG").is_err() {
+                builder.filter_level(LevelFilter::Info);
+            }
+        }
+
+        builder.init();
+    }
 }
 
 #[derive(Subcommand, Clone, Debug, PartialEq, Eq)]
