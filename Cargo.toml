@@ -11,6 +11,8 @@ license = "GPL-3.0-or-later"
 [workspace.dependencies]
 log = "0.4.29"
 env_logger = "0.11.8"
+hex = "0.4.3"
+toml = "0.9.8"
 
 # --- Release Profile Settings ---
 # These settings apply to the entire workspace when running with --release
