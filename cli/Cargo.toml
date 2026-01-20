@@ -3,8 +3,8 @@ name = "angrybirds-cryptor-cli"
 version = "0.4.0"
 authors = { workspace = true }
 edition = { workspace = true }
+license = { workspace = true }
 description = "Command-line interface for Angry Birds file cryptor"
-license = "GPL-3.0-or-later"
 
 [dependencies]
 clap = { version = "4.5.23", features = ["derive"] }

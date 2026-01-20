@@ -3,8 +3,8 @@ name = "angrybirds-cryptor-core"
 version = "0.4.0"
 authors = { workspace = true }
 edition = { workspace = true }
+license = { workspace = true }
 description = "Core library for Angry Birds file cryptor"
-license = "GPL-3.0-or-later"
 
 [dependencies]
 aes = "0.8.4"
