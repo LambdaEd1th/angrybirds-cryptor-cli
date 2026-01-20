@@ -1,4 +1,4 @@
-use aes::cipher::block_padding::UnpadError;
+use cipher::block_padding::UnpadError;
 use thiserror::Error;
 
 #[derive(Debug, Error)]

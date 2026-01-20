@@ -18,71 +18,78 @@ fn main() -> Result<()> {
     let cfg = config::Config::load_or_default(cli.config.as_deref())?;
 
     match cli.command {
-        cli::Commands::Encrypt(cmd_args) => {
-            info!("Mode: Encrypt");
+        cli::Commands::Encrypt(cmd_args) => handle_encrypt(cmd_args, &cfg),
+        cli::Commands::Decrypt(cmd_args) => handle_decrypt(cmd_args, &cfg),
+        cli::Commands::InitConfig(cmd_args) => handle_init_config(cmd_args),
+    }?;
 
-            // Priority: CLI args > Config
-            let cryptor = if let Some(hex_key) = cmd_args.key {
-                create_custom_cryptor(&hex_key, cmd_args.iv.as_deref())?
-            } else {
-                debug!("Using configuration (Key & IV).");
-                let category = cmd_args.category.as_deref().ok_or_else(|| {
-                    anyhow!("Category argument is required when no custom key is provided.")
-                })?;
-                let game_name = cmd_args.game.as_deref().ok_or_else(|| {
-                    anyhow!("Game name argument is required when no custom key is provided.")
-                })?;
+    Ok(())
+}
 
-                crypto::Cryptor::new(category, game_name, &cfg)?
-            };
+fn handle_encrypt(args: cli::EncryptArgs, cfg: &config::Config) -> Result<()> {
+    info!("Mode: Encrypt");
 
-            process_files(&cmd_args.input, cmd_args.output, "_encrypted", |data| {
-                Ok(cryptor.encrypt(data))
-            })?;
+    // Priority: CLI args > Config
+    let cryptor = if let Some(hex_key) = args.key {
+        create_custom_cryptor(&hex_key, args.iv.as_deref())?
+    } else {
+        debug!("Using configuration (Key & IV).");
+        let category = args.category.as_deref().ok_or_else(|| {
+            anyhow!("Category argument is required when no custom key is provided.")
+        })?;
+        let game_name = args.game.as_deref().ok_or_else(|| {
+            anyhow!("Game name argument is required when no custom key is provided.")
+        })?;
+
+        crypto::Cryptor::new(category, game_name, cfg)?
+    };
+
+    process_files(&args.input, args.output, "_encrypted", |data| {
+        Ok(cryptor.encrypt(data))
+    })
+}
+
+fn handle_decrypt(args: cli::DecryptArgs, cfg: &config::Config) -> Result<()> {
+    info!("Mode: Decrypt");
+
+    process_files(&args.input, args.output, "_decrypted", |data| {
+        if let Some(hex_key) = &args.key {
+            let cryptor = create_custom_cryptor(hex_key, args.iv.as_deref())?;
+            Ok(cryptor.decrypt(data)?)
+        } else if args.auto {
+            // Auto-detection now tries all configured Key+IV pairs
+            let (decrypted, ft, gn) = crypto::try_decrypt_all(data, cfg)?;
+            info!("Auto-detected: Game='{}', Category='{}'", gn, ft);
+            Ok(decrypted)
+        } else {
+            let category = args
+                .category
+                .as_deref()
+                .ok_or_else(|| anyhow!("Category argument is required for manual decryption."))?;
+            let game = args
+                .game
+                .as_deref()
+                .ok_or_else(|| anyhow!("Game name argument is required for manual decryption."))?;
+
+            let cryptor = crypto::Cryptor::new(category, game, cfg)?;
+            Ok(cryptor.decrypt(data)?)
         }
+    })
+}
 
-        cli::Commands::Decrypt(cmd_args) => {
-            info!("Mode: Decrypt");
+fn handle_init_config(args: cli::InitConfigArgs) -> Result<()> {
+    info!("Generating default configuration...");
 
-            process_files(&cmd_args.input, cmd_args.output, "_decrypted", |data| {
-                if let Some(hex_key) = &cmd_args.key {
-                    let cryptor = create_custom_cryptor(hex_key, cmd_args.iv.as_deref())?;
-                    Ok(cryptor.decrypt(data)?)
-                } else if cmd_args.auto {
-                    // Auto-detection now tries all configured Key+IV pairs
-                    let (decrypted, ft, gn) = crypto::try_decrypt_all(data, &cfg)?;
-                    info!("Auto-detected: Game='{}', Category='{}'", gn, ft);
-                    Ok(decrypted)
-                } else {
-                    let category = cmd_args.category.as_deref().ok_or_else(|| {
-                        anyhow!("Category argument is required for manual decryption.")
-                    })?;
-                    let game = cmd_args.game.as_deref().ok_or_else(|| {
-                        anyhow!("Game name argument is required for manual decryption.")
-                    })?;
+    let default_config = config::Config::default();
 
-                    let cryptor = crypto::Cryptor::new(category, game, &cfg)?;
-                    Ok(cryptor.decrypt(data)?)
-                }
-            })?;
-        }
+    let toml_string = toml::to_string_pretty(&default_config)
+        .context("Failed to serialize default configuration")?;
 
-        cli::Commands::InitConfig(cmd_args) => {
-            info!("Generating default configuration...");
+    let path = args.output;
+    fs::write(&path, &toml_string)
+        .with_context(|| format!("Failed to write config file to {:?}", path))?;
 
-            let default_config = config::Config::default();
-
-            let toml_string = toml::to_string_pretty(&default_config)
-                .context("Failed to serialize default configuration")?;
-
-            let path = cmd_args.output;
-            fs::write(&path, toml_string)
-                .with_context(|| format!("Failed to write config file to {:?}", path))?;
-
-            info!("Successfully created default config at {:?}", path);
-        }
-    }
-
+    info!("Successfully created default config at {:?}", path);
     Ok(())
 }
 

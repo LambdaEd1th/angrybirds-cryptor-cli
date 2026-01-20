@@ -1,5 +1,5 @@
 use crate::{config::Config, constants::DEFAULT_IV, errors::CryptorError};
-use aes::cipher::{block_padding::Pkcs7, BlockDecryptMut, BlockEncryptMut, KeyIvInit};
+use cipher::{block_padding::Pkcs7, BlockDecryptMut, BlockEncryptMut, KeyIvInit};
 use log::{debug, trace};
 
 type Aes256CbcEnc = cbc::Encryptor<aes::Aes256>;
@@ -18,7 +18,7 @@ impl Cryptor {
     /// Uses the specific IV if provided in config, otherwise defaults to zero IV.
     pub fn new(category: &str, game_name: &str, config: &Config) -> Result<Self> {
         // Retrieve both Key and IV from the configuration
-        let (key_vec, iv_arr) = config.get_params(game_name, category).ok_or_else(|| {
+        let (key_vec, iv_arr) = config.get_params(game_name, category)?.ok_or_else(|| {
             CryptorError::UnsupportedCombination(category.to_string(), game_name.to_string())
         })?;
 
@@ -57,6 +57,7 @@ impl Cryptor {
 }
 
 pub fn try_decrypt_all(data: &[u8], config: &Config) -> Result<(Vec<u8>, String, String)> {
+    use log::warn;
     debug!("Starting brute-force decryption on {} bytes", data.len());
 
     for (game_name, categories_map) in &config.games {
@@ -64,22 +65,32 @@ pub fn try_decrypt_all(data: &[u8], config: &Config) -> Result<(Vec<u8>, String,
             trace!("Trying combination: {} - {}", game_name, category);
 
             // Re-use get_params logic to handle Key/IV decoding correctly
-            if let Some((key_vec, iv_arr)) = config.get_params(game_name, category) {
-                if key_vec.len() != 32 {
-                    continue;
+            match config.get_params(game_name, category) {
+                Ok(Some((key_vec, iv_arr))) => {
+                    if key_vec.len() != 32 {
+                        continue;
+                    }
+
+                    let mut key_array = [0u8; 32];
+                    key_array.copy_from_slice(&key_vec);
+
+                    let cryptor = Cryptor {
+                        key: key_array,
+                        iv: iv_arr,
+                    };
+
+                    if let Ok(decrypted) = cryptor.decrypt(data) {
+                        debug!("Key found! Combination: {} - {}", game_name, category);
+                        return Ok((decrypted, category.clone(), game_name.clone()));
+                    }
                 }
-
-                let mut key_array = [0u8; 32];
-                key_array.copy_from_slice(&key_vec);
-
-                let cryptor = Cryptor {
-                    key: key_array,
-                    iv: iv_arr,
-                };
-
-                if let Ok(decrypted) = cryptor.decrypt(data) {
-                    debug!("Key found! Combination: {} - {}", game_name, category);
-                    return Ok((decrypted, category.clone(), game_name.clone()));
+                Ok(None) => continue,
+                Err(e) => {
+                    warn!(
+                        "Skipping invalid config entry for {}/{}: {}",
+                        game_name, category, e
+                    );
+                    continue;
                 }
             }
         }

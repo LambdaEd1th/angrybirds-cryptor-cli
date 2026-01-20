@@ -25,12 +25,25 @@ pub enum CryptoEntry {
 }
 
 impl Config {
-    pub fn get_params(&self, game_name: &str, category: &str) -> Option<(Vec<u8>, [u8; 16])> {
+    pub fn get_params(
+        &self,
+        game_name: &str,
+        category: &str,
+    ) -> Result<Option<(Vec<u8>, [u8; 16])>, CryptorError> {
         let game_key = game_name.to_lowercase();
         let category_key = category.to_lowercase();
 
-        let game_config = self.games.get(&game_key)?;
-        let entry = game_config.get(&category_key)?;
+        let game_config = if let Some(g) = self.games.get(&game_key) {
+            g
+        } else {
+            return Ok(None);
+        };
+
+        let entry = if let Some(e) = game_config.get(&category_key) {
+            e
+        } else {
+            return Ok(None);
+        };
 
         let (key_str, iv_str_opt) = match entry {
             CryptoEntry::KeyOnly(k) => (k, None),
@@ -38,25 +51,26 @@ impl Config {
         };
 
         // Use strict hex decoding.
-        // If the key string is not valid hex, this returns an empty vector.
-        // The empty vector will trigger a length validation error in Cryptor::new later.
-        let key_bytes = decode_hex_strict(key_str);
+        let key_bytes = decode_hex_strict(key_str)?;
 
         let iv_bytes = if let Some(iv_s) = iv_str_opt {
-            let decoded = decode_hex_strict(iv_s);
+            let decoded = decode_hex_strict(iv_s)?;
             // Validate IV length immediately (must be 16 bytes for AES-256-CBC)
             if decoded.len() == 16 {
                 let mut arr = [0u8; 16];
                 arr.copy_from_slice(&decoded);
                 arr
             } else {
-                return None;
+                return Err(CryptorError::InvalidLength {
+                    expected: 16,
+                    got: decoded.len(),
+                });
             }
         } else {
             DEFAULT_IV
         };
 
-        Some((key_bytes, iv_bytes))
+        Ok(Some((key_bytes, iv_bytes)))
     }
 
     pub fn load_or_default(path: Option<&Path>) -> Result<Self, CryptorError> {
@@ -85,8 +99,8 @@ impl Config {
 /// Helper function to decode hex strings strictly.
 /// Returns an empty Vec if decoding fails, ensuring we don't accidentally interpret
 /// malformed hex as raw bytes.
-fn decode_hex_strict(s: &str) -> Vec<u8> {
-    hex::decode(s).unwrap_or_default()
+fn decode_hex_strict(s: &str) -> Result<Vec<u8>, CryptorError> {
+    Ok(hex::decode(s)?)
 }
 
 impl Default for Config {
