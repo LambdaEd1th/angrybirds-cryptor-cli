@@ -1,5 +1,5 @@
 use crate::{config::Config, constants::DEFAULT_IV, errors::CryptorError};
-use cipher::{block_padding::Pkcs7, BlockDecryptMut, BlockEncryptMut, KeyIvInit};
+use cipher::{BlockDecryptMut, BlockEncryptMut, KeyIvInit, block_padding::Pkcs7};
 use log::{debug, trace};
 
 type Aes256CbcEnc = cbc::Encryptor<aes::Aes256>;
