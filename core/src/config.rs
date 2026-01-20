@@ -12,6 +12,7 @@ pub struct Config {
 }
 
 pub type GameConfig = HashMap<String, CryptoEntry>;
+pub type KeyIv = (Vec<u8>, [u8; 16]);
 
 /// Represents a configuration entry for a specific file category.
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -29,7 +30,7 @@ impl Config {
         &self,
         game_name: &str,
         category: &str,
-    ) -> Result<Option<(Vec<u8>, [u8; 16])>, CryptorError> {
+    ) -> Result<Option<KeyIv>, CryptorError> {
         let game_key = game_name.to_lowercase();
         let category_key = category.to_lowercase();
 
@@ -76,18 +77,16 @@ impl Config {
     pub fn load_or_default(path: Option<&Path>) -> Result<Self, CryptorError> {
         let mut config = Self::default();
 
-        if let Some(p) = path {
-            if p.exists() {
-                let content = fs::read_to_string(p)?;
-                let user_config: Config = toml::from_str(&content)?;
+        if let Some(p) = path.filter(|p| p.exists()) {
+            let content = fs::read_to_string(p)?;
+            let user_config: Config = toml::from_str(&content)?;
 
-                // Merge user config into default config
-                for (game, categories) in user_config.games {
-                    let game_lower = game.to_lowercase();
-                    let entry = config.games.entry(game_lower).or_insert_with(HashMap::new);
-                    for (category, crypto_entry) in categories {
-                        entry.insert(category.to_lowercase(), crypto_entry);
-                    }
+            // Merge user config into default config
+            for (game, categories) in user_config.games {
+                let game_lower = game.to_lowercase();
+                let entry = config.games.entry(game_lower).or_insert_with(HashMap::new);
+                for (category, crypto_entry) in categories {
+                    entry.insert(category.to_lowercase(), crypto_entry);
                 }
             }
         }

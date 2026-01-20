@@ -137,7 +137,7 @@ mod tests {
         let mut encrypted = cryptor.encrypt(PLAINTEXT);
 
         let len = encrypted.len();
-        encrypted[len - 1] = encrypted[len - 1] ^ 0xFF;
+        encrypted[len - 1] ^= 0xFF;
 
         let result = cryptor.decrypt(&encrypted);
         assert!(
