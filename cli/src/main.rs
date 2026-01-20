@@ -7,7 +7,8 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use angrybirds_cryptor_cli::{cli, config, crypto};
+use angrybirds_cryptor_core::{config, crypto};
+mod cli;
 
 fn main() -> Result<()> {
     let cli = cli::Cli::parse();

@@ -17,4 +17,10 @@ pub enum CryptorError {
 
     #[error("Invalid Key/IV length: Expected {expected} bytes, got {got}.")]
     InvalidLength { expected: usize, got: usize },
+
+    #[error("IO Error: {0}")]
+    IoError(#[from] std::io::Error),
+
+    #[error("TOML Parsing Error: {0}")]
+    TomlError(#[from] toml::de::Error),
 }

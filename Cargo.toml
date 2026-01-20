@@ -1,17 +1,8 @@
-[package]
-name = "angrybirds-cryptor-cli"
-version = "0.4.0"
-edition = "2021"
-authors = ["ed1th"]
-description = "Angry Birds file cryptor"
-categories = ["command-line-utilities"]
-readme = "README.md"
-license = "GPL-3.0-or-later"
-repository = "https://github.com/LambdaEd1th/angrybirds-cryptor-cli"
+[workspace]
+members = ["core", "cli"]
+resolver = "2"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
-[dependencies]
+[workspace.dependencies]
 aes = "0.8.4"
 cbc = { version = "0.1.2", features = ["std"] }
 clap = { version = "4.5.53", features = ["derive", "help"] }
@@ -23,10 +14,3 @@ strum = { version = "0.27.2", features = ["derive"] }
 hex = "0.4.3"
 serde = { version = "1.0.228", features = ["derive"] }
 toml = "0.9.8"
-
-[profile.release]
-strip = true
-opt-level = "s"
-lto = true
-codegen-units = 1
-panic = "abort"

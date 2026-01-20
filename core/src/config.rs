@@ -1,5 +1,5 @@
 use crate::constants::DEFAULT_IV;
-use anyhow::{Context, Result};
+use crate::errors::CryptorError;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
@@ -59,15 +59,13 @@ impl Config {
         Some((key_bytes, iv_bytes))
     }
 
-    pub fn load_or_default(path: Option<&Path>) -> Result<Self> {
+    pub fn load_or_default(path: Option<&Path>) -> Result<Self, CryptorError> {
         let mut config = Self::default();
 
         if let Some(p) = path {
             if p.exists() {
-                let content = fs::read_to_string(p)
-                    .with_context(|| format!("Failed to read config file at {:?}", p))?;
-                let user_config: Config =
-                    toml::from_str(&content).context("Failed to parse TOML config file")?;
+                let content = fs::read_to_string(p)?;
+                let user_config: Config = toml::from_str(&content)?;
 
                 // Merge user config into default config
                 for (game, categories) in user_config.games {
