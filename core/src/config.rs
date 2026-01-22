@@ -12,7 +12,7 @@ pub struct Config {
 }
 
 pub type GameConfig = HashMap<String, CryptoEntry>;
-pub type KeyIv = (Vec<u8>, [u8; 16]);
+pub type KeyIv = ([u8; 32], [u8; 16]);
 
 /// Represents a configuration entry for a specific file category.
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -53,6 +53,14 @@ impl Config {
 
         // Use strict hex decoding.
         let key_bytes = decode_hex_strict(key_str)?;
+        if key_bytes.len() != 32 {
+            return Err(CryptorError::InvalidLength {
+                expected: 32,
+                got: key_bytes.len(),
+            });
+        }
+        let mut key_arr = [0u8; 32];
+        key_arr.copy_from_slice(&key_bytes);
 
         let iv_bytes = if let Some(iv_s) = iv_str_opt {
             let decoded = decode_hex_strict(iv_s)?;
@@ -71,7 +79,7 @@ impl Config {
             DEFAULT_IV
         };
 
-        Ok(Some((key_bytes, iv_bytes)))
+        Ok(Some((key_arr, iv_bytes)))
     }
 
     pub fn load_or_default(path: Option<&Path>) -> Result<Self, CryptorError> {
